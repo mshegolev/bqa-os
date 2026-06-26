@@ -4,6 +4,32 @@
 
 BQA-OS is designed to connect QA knowledge, agents, skills, workflows, guardrails, memory, and AI coding runtimes into one reusable system.
 
+## Live demo
+
+**BQA-OS Agent Citadel** is a GitHub Pages demo placeholder for the upcoming visual flow:
+
+```text
+raw QA sessions → sanitized knowledge → skills → agents → workflows
+```
+
+Live URL, after GitHub Pages is enabled for `/docs` on the `main` branch:
+
+```text
+https://mshegolev.github.io/bqa-os/
+```
+
+Local preview:
+
+```bash
+python3 -m http.server 8080 -d docs
+```
+
+Then open:
+
+```text
+http://localhost:8080
+```
+
 ## Vision
 
 A user should be able to open a repository and say:
@@ -115,6 +141,7 @@ Implemented:
 - runtime detection for Codex, Claude Code, and OpenCode
 - BQA Master Agent context generation for runtime adapters
 - early one-line installer through `install.sh`
+- GitHub Pages placeholder for BQA-OS Agent Citadel
 
 Planned:
 
