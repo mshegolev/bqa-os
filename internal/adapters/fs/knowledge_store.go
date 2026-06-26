@@ -2,7 +2,6 @@ package fs
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -16,37 +15,13 @@ type KnowledgeStore struct {
 }
 
 func (s KnowledgeStore) LoadSessionIndex(ctx context.Context) (ports.SessionIndex, error) {
-	select {
-	case <-ctx.Done():
-		return ports.SessionIndex{}, ctx.Err()
-	default:
-	}
-	path := filepath.Join(s.sessionBase(), "index.json")
-	data, err := os.ReadFile(path)
-	if err != nil {
-		if os.IsNotExist(err) {
-			return ports.SessionIndex{}, fmt.Errorf("session index not found: %s\nRun `bqa discover` and `bqa ingest2` first", path)
-		}
-		return ports.SessionIndex{}, err
-	}
-	var index ports.SessionIndex
-	if err := json.Unmarshal(data, &index); err != nil {
-		return ports.SessionIndex{}, err
-	}
-	return index, nil
+	reader := KnowledgeSessionReader{SessionBaseDir: s.SessionBaseDir}
+	return reader.LoadSessionIndex(ctx)
 }
 
 func (s KnowledgeStore) ReadNormalizedSession(ctx context.Context, path string) (string, error) {
-	select {
-	case <-ctx.Done():
-		return "", ctx.Err()
-	default:
-	}
-	data, err := os.ReadFile(path)
-	if err != nil {
-		return "", err
-	}
-	return string(data), nil
+	reader := KnowledgeSessionReader{SessionBaseDir: s.SessionBaseDir}
+	return reader.ReadNormalizedSession(ctx, path)
 }
 
 func (s KnowledgeStore) ReadKnowledgeArtifact(ctx context.Context, filename string) (string, error) {
@@ -55,7 +30,11 @@ func (s KnowledgeStore) ReadKnowledgeArtifact(ctx context.Context, filename stri
 		return "", ctx.Err()
 	default:
 	}
-	data, err := os.ReadFile(filepath.Join(s.knowledgeDir(), filename))
+	path, err := s.safeKnowledgeArtifactPath(filename)
+	if err != nil {
+		return "", err
+	}
+	data, err := os.ReadFile(path)
 	if err != nil {
 		return "", err
 	}
@@ -68,7 +47,10 @@ func (s KnowledgeStore) WriteKnowledgeArtifact(ctx context.Context, filename str
 		return ctx.Err()
 	default:
 	}
-	path := filepath.Join(s.knowledgeDir(), filename)
+	path, err := s.safeKnowledgeArtifactPath(filename)
+	if err != nil {
+		return err
+	}
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 		return err
 	}
@@ -88,11 +70,17 @@ func (s KnowledgeStore) WriteBQAArtifact(ctx context.Context, relativePath strin
 	return os.WriteFile(path, []byte(content), 0o600)
 }
 
-func (s KnowledgeStore) sessionBase() string {
-	if s.SessionBaseDir == "" {
-		return ".bqa/input/sessions"
+func (s KnowledgeStore) safeKnowledgeArtifactPath(filename string) (string, error) {
+	if filename == "" {
+		return "", fmt.Errorf("knowledge artifact filename is empty")
 	}
-	return s.SessionBaseDir
+	if filepath.IsAbs(filename) || filename != filepath.Base(filename) {
+		return "", fmt.Errorf("invalid knowledge artifact filename: %s", filename)
+	}
+	if filepath.Ext(filename) != ".yaml" {
+		return "", fmt.Errorf("knowledge artifact must be a yaml file: %s", filename)
+	}
+	return filepath.Join(s.knowledgeDir(), filename), nil
 }
 
 func (s KnowledgeStore) knowledgeDir() string {
