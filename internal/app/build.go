@@ -37,7 +37,7 @@ func buildCmd() *cobra.Command {
 			fmt.Printf("Knowledge artifacts created: %d\n", knowledgeResult.ArtifactsCreated)
 			fmt.Printf("BQA artifacts created: %d\n", artifactResult.ArtifactsCreated)
 			fmt.Printf("Knowledge dir: %s\n", knowledgeDir)
-			fmt.Println("Generated dirs: .bqa/skills .bqa/agents .bqa/workflows")
+			fmt.Println("Generated dirs: .bqa/skills .bqa/agents .bqa/workflows .bqa/registry")
 			return nil
 		},
 	}
