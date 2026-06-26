@@ -110,7 +110,7 @@ func isGraphQLSignal(text string) bool {
 	if hasAny(text, "github_graphql_url", "api/graphql", "github api url") {
 		return false
 	}
-	return hasAny(text, "graphql query", "graphql mutation", "graphql schema", "resolver", "introspection", "query {", "mutation {") || hasToken(text, "gql")
+	return hasAny(text, "graphql query", "graphql mutation", "graphql schema", "graphql resolver", "graphql introspection", "query {", "mutation {")
 }
 
 func isAPISignal(text string) bool {
@@ -156,17 +156,6 @@ func hasAny(text string, values ...string) bool {
 	return false
 }
 
-func hasToken(text string, token string) bool {
-	for _, part := range strings.FieldsFunc(text, func(r rune) bool {
-		return !(r >= 'a' && r <= 'z' || r >= '0' && r <= '9' || r == '_')
-	}) {
-		if part == token {
-			return true
-		}
-	}
-	return false
-}
-
 func cleanEvidenceText(text string) string {
 	text = strings.ReplaceAll(text, "\r", " ")
 	text = strings.ReplaceAll(text, "\n", " ")
@@ -197,7 +186,7 @@ func evidence(text string, needle string) string {
 }
 
 func etlNeedle(text string) string     { return firstNeedle(text, "airflow", "spark", "hive", "oozie", "etl_logs", "reconciliation", "parquet", "row count", "etl") }
-func graphqlNeedle(text string) string { return firstNeedle(text, "graphql query", "graphql mutation", "graphql schema", "resolver", "query {", "gql") }
+func graphqlNeedle(text string) string { return firstNeedle(text, "graphql query", "graphql mutation", "graphql schema", "graphql resolver", "query {") }
 func apiNeedle(text string) string     { return firstNeedle(text, "rest api", "http status", "status code", "endpoint", "contract test", "openapi", "request payload") }
 func dqNeedle(text string) string      { return firstNeedle(text, "data quality", "schema drift", "null check", "duplicate check", "row count", "checksum", "dq check") }
 func failureNeedle(text string) string { return firstNeedle(text, "traceback", "exception", "failed", "failure", "error:", "panic", "regression", "flaky") }
