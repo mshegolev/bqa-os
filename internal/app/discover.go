@@ -36,7 +36,7 @@ func discoverCmd() *cobra.Command {
 		},
 	}
 
-	cmd.Flags().StringVar(&sources, "sources", "claude,codex,opencode", "comma-separated sources: claude,codex,opencode")
+	cmd.Flags().StringVar(&sources, "sources", "claude,codex,opencode,droid", "comma-separated sources")
 	cmd.Flags().BoolVar(&global, "global", true, "scan global user directories")
 	cmd.Flags().BoolVar(&local, "local", true, "scan current repository")
 	cmd.Flags().StringVar(&manifestPath, "manifest", ".bqa/input/sessions/manifest.json", "manifest output path")
