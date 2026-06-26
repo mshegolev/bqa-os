@@ -1,6 +1,6 @@
 # Knowledge Extractor
 
-The Knowledge Extractor is the first BQA-OS build stage that turns normalized AI coding sessions into reusable QA knowledge artifacts.
+The Knowledge Extractor is the first BQA-OS build stage that turns normalized AI coding sessions into reusable QA knowledge artifacts and starter BQA runtime artifacts.
 
 ## Workflow
 
@@ -21,13 +21,13 @@ bqa build
 
 ## Outputs
 
-`bqa build` writes initial YAML artifacts into:
+`bqa build` writes initial YAML knowledge artifacts into:
 
 ```text
 .bqa/knowledge/
 ```
 
-Generated files:
+Generated knowledge files:
 
 ```text
 etl_patterns.yaml
@@ -39,6 +39,25 @@ successful_prompts.yaml
 droid_patterns.yaml
 runtime_patterns.yaml
 project_profile.yaml
+```
+
+`bqa build` also writes starter BQA artifacts into:
+
+```text
+.bqa/skills/
+.bqa/agents/
+.bqa/workflows/
+```
+
+Generated starter artifacts:
+
+```text
+skills/etl-log-investigation.md
+skills/runtime-trace-review.md
+agents/etl-qa-agent.md
+agents/runtime-agent.md
+workflows/etl-verification-workflow.md
+workflows/session-knowledge-workflow.md
 ```
 
 ## Current extraction strategy
@@ -56,7 +75,7 @@ The current implementation is intentionally heuristic and deterministic. It scan
 
 The extractor is source-aware and includes basic noise filtering. For example, it avoids treating GitHub environment variables such as `github_graphql_url` as GraphQL testing evidence.
 
-This is still an early vertical slice. Future versions will add richer parsing, deduplication, scoring, project-aware extraction, and agent/skill/workflow generation.
+This is still an early vertical slice. Future versions will add richer parsing, deduplication, scoring, project-aware extraction, and richer agent/skill/workflow generation.
 
 ## Architecture
 
@@ -72,4 +91,16 @@ ports
 adapters/fs
 ```
 
-The Cobra command only parses flags, creates adapters, calls the core use case, and prints a summary.
+The build command also runs a small `core/artifacts` generation use case after knowledge extraction:
+
+```text
+CLI
+↓
+core/artifacts use case
+↓
+ports
+↓
+adapters/fs
+```
+
+The Cobra command only parses flags, creates adapters, calls core use cases, and prints a summary.
