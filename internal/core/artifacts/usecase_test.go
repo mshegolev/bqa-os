@@ -23,8 +23,8 @@ func TestUseCaseGeneratesStarterArtifacts(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Run returned error: %v", err)
 	}
-	if result.ArtifactsCreated != 6 {
-		t.Fatalf("expected 6 generated artifacts, got %d", result.ArtifactsCreated)
+	if result.ArtifactsCreated != 10 {
+		t.Fatalf("expected 10 generated artifacts, got %d", result.ArtifactsCreated)
 	}
 	if !strings.Contains(writer.files["skills/etl-log-investigation.md"], "ETL Log Investigation") {
 		t.Fatalf("missing ETL skill artifact")
@@ -34,5 +34,8 @@ func TestUseCaseGeneratesStarterArtifacts(t *testing.T) {
 	}
 	if !strings.Contains(writer.files["workflows/session-knowledge-workflow.md"], "bqa build") {
 		t.Fatalf("missing session workflow artifact")
+	}
+	if !strings.Contains(writer.files["registry/index.yaml"], "registry:") {
+		t.Fatalf("missing registry index artifact")
 	}
 }
