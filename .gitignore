@@ -6,3 +6,11 @@
 .bqa-team/generated/tmp/
 bqa_team_orchestrator_pack/
 error.log
+
+# BQA local runtime artifacts
+.bqa/
+.bqa-team/generated/
+.bqa-team/logs/
+.bqa-team/state.json
+bqa_team_orchestrator_pack/
+error.log
