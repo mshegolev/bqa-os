@@ -2,17 +2,12 @@
 """
 BQA Team Orchestrator
 
-Local orchestration layer for BQA-OS role prompts + GitHub Issues + Codex CLI.
+Local orchestration layer for BQA role prompts + GitHub Issues + Codex CLI.
 
 Safety:
 - Dry-run by default.
 - Mutating operations require --execute.
-- Long loops require bounded --max-cycles.
-
-This script does not call private APIs directly. It shells out to:
-- gh       for GitHub Issues/PRs
-- codex    for local agent execution
-- git      for branches/commits
+- Do not run unbounded loops.
 """
 from __future__ import annotations
 
@@ -22,13 +17,10 @@ import os
 import re
 import shlex
 import subprocess
-import sys
-import textwrap
 import time
-from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Iterable, Optional
+from typing import Iterable
 
 ROOT = Path.cwd()
 TEAM_DIR = ROOT / ".bqa-team"
@@ -37,6 +29,8 @@ BACKLOG_DIR = TEAM_DIR / "backlog"
 GENERATED_DIR = TEAM_DIR / "generated"
 ISSUES_DIR = GENERATED_DIR / "issues"
 PROMPTS_DIR = GENERATED_DIR / "prompts"
+RUNS_DIR = GENERATED_DIR / "runs"
+TMP_DIR = GENERATED_DIR / "tmp"
 STATE_FILE = TEAM_DIR / "state.json"
 
 LABELS = {
@@ -54,6 +48,12 @@ LABELS = {
     "bqa:static-site": "Static web application work",
     "bqa:game-ui": "Game-style team visualization work",
     "bqa:codex-team": "Codex team automation work",
+    "bqa:question": "Open question raised during development",
+    "bqa:blocked": "Task is blocked by an unresolved question",
+    "bqa:decision": "Resolved decision or clarification",
+    "bqa:needs-product": "Needs product/business clarification",
+    "bqa:needs-architect": "Needs technical architect decision",
+    "bqa:needs-qa": "Needs QA/domain clarification",
 }
 
 ROLE_FILES = {
@@ -129,13 +129,13 @@ def log(msg: str) -> None:
     print(f"[{datetime.now().strftime('%H:%M:%S')}] {msg}")
 
 
-def run(cmd: list[str], *, execute: bool, cwd: Path = ROOT, capture: bool = False, check: bool = True) -> subprocess.CompletedProcess[str]:
+def run(cmd: list[str], *, execute: bool, capture: bool = False, check: bool = True) -> subprocess.CompletedProcess[str]:
     printable = " ".join(shlex.quote(c) for c in cmd)
     if not execute:
         print(f"DRY-RUN: {printable}")
         return subprocess.CompletedProcess(cmd, 0, stdout="", stderr="")
     log(f"RUN: {printable}")
-    return subprocess.run(cmd, cwd=str(cwd), text=True, capture_output=capture, check=check)
+    return subprocess.run(cmd, cwd=str(ROOT), text=True, capture_output=capture, check=check)
 
 
 def read(path: Path) -> str:
@@ -149,26 +149,8 @@ def write(path: Path, content: str) -> None:
 
 def slugify(text: str, max_len: int = 56) -> str:
     text = text.lower()
-    text = re.sub(r"[^a-z0-9]+", "-", text)
-    text = text.strip("-") or "task"
+    text = re.sub(r"[^a-z0-9]+", "-", text).strip("-") or "task"
     return text[:max_len].strip("-")
-
-
-def load_role(role: str) -> str:
-    path = ROLES_DIR / ROLE_FILES[role]
-    if not path.exists():
-        raise SystemExit(f"Missing role prompt: {path}")
-    return read(path)
-
-
-def load_state() -> dict:
-    if STATE_FILE.exists():
-        return json.loads(read(STATE_FILE))
-    return {"processed_backlog": {}, "created_issues": {}, "runs": []}
-
-
-def save_state(state: dict) -> None:
-    write(STATE_FILE, json.dumps(state, indent=2, ensure_ascii=False) + "\n")
 
 
 def require_tools(names: Iterable[str], execute: bool) -> None:
@@ -181,9 +163,25 @@ def require_tools(names: Iterable[str], execute: bool) -> None:
             log(f"WARNING: {msg}")
 
 
+def load_state() -> dict:
+    if STATE_FILE.exists():
+        return json.loads(read(STATE_FILE))
+    return {"processed_backlog": {}, "created_issues": {}, "runs": []}
+
+
+def save_state(state: dict) -> None:
+    write(STATE_FILE, json.dumps(state, indent=2, ensure_ascii=False) + "\n")
+
+
+def load_role(role: str) -> str:
+    path = ROLES_DIR / ROLE_FILES[role]
+    if not path.exists():
+        raise SystemExit(f"Missing role prompt: {path}")
+    return read(path)
+
+
 def cmd_init(args: argparse.Namespace) -> None:
-    TEAM_DIR.mkdir(exist_ok=True)
-    for d in [ROLES_DIR, BACKLOG_DIR, ISSUES_DIR, PROMPTS_DIR]:
+    for d in [ROLES_DIR, BACKLOG_DIR, ISSUES_DIR, PROMPTS_DIR, RUNS_DIR, TMP_DIR]:
         d.mkdir(parents=True, exist_ok=True)
     if not STATE_FILE.exists():
         save_state(load_state())
@@ -221,9 +219,48 @@ Create a scripted workflow where business tasks are transformed into GitHub issu
             log(f"Seeded {path}")
 
 
-def architect_prompt(task_name: str, task_body: str, repo: str) -> str:
+def cmd_ensure_labels(args: argparse.Namespace) -> None:
+    require_tools(["gh"], args.execute)
+    for name, desc in LABELS.items():
+        run([
+            "gh", "label", "create", name,
+            "--repo", args.repo,
+            "--description", desc,
+            "--force",
+        ], execute=args.execute, check=False)
+
+
+def fallback_issue_spec(path: Path) -> str:
+    body = read(path)
+    first = body.splitlines()[0] if body.splitlines() else path.stem
+    title = first.replace("# Business Task:", "").replace("#", "").strip() or path.stem
+    labels = ["bqa:arch-approved", "bqa:ready-dev"]
+    text = body.lower()
+    if "static" in text or "landing" in text or "site" in text:
+        labels.append("bqa:static-site")
+    if "warcraft" in text or "visualization" in text or "game" in text:
+        labels.append("bqa:game-ui")
+    if "codex" in text or "pipeline" in text:
+        labels.append("bqa:codex-team")
+    spec = ISSUE_TEMPLATE.format(
+        context=f"Business task from `{path.name}`. This issue was routed through the technical architect stage.",
+        goal=title,
+        create_change="- To be refined by Architect/Codex output before execution.",
+        do_not_touch="- Private repo data\n- Real session logs\n- Secrets",
+        behavior=body,
+        acceptance="- [ ] Architecture boundaries are respected.\n- [ ] Synthetic data only.\n- [ ] Manual verification steps pass.",
+        verification="go test ./...",
+    )
+    return f"---ISSUE---\nTITLE: {title}\nLABELS: {','.join(labels)}\nBODY:\n{spec}\n---END---\n"
+
+
+def architect_prompt(path: Path, repo: str) -> str:
     architect = load_role("architect")
-    devroom = load_role("devroom") if (ROLES_DIR / ROLE_FILES["devroom"]).exists() else ""
+    devroom = ""
+    try:
+        devroom = load_role("devroom")[:8000]
+    except SystemExit:
+        pass
     return f"""
 {architect}
 
@@ -231,17 +268,17 @@ def architect_prompt(task_name: str, task_body: str, repo: str) -> str:
 
 Additional Dev Room context:
 
-{devroom[:8000]}
+{devroom}
 
 ---
 
-You are transforming a business task into one or more GitHub-ready issue specs for repository `{repo}`.
+Transform this business task into one or more GitHub-ready issue specs for `{repo}`.
 
-Business task file: {task_name}
+Business task file: {path.name}
 
 Business task:
 
-{task_body}
+{read(path)}
 
 Rules:
 - Every business task must pass through technical architecture review before development.
@@ -250,7 +287,6 @@ Rules:
 - Preserve hexagonal architecture.
 - No private data, real session logs, or secrets.
 - For static site tasks, prefer plain HTML/CSS/JS MVP unless architecture says otherwise.
-- For game visualization, start with simple board/map UI, not a heavy game engine.
 
 Return markdown with this exact structure for each issue:
 
@@ -266,7 +302,6 @@ BODY:
 def cmd_architect(args: argparse.Namespace) -> None:
     require_tools(["codex"], args.execute)
     state = load_state()
-    BACKLOG_DIR.mkdir(parents=True, exist_ok=True)
     tasks = sorted(BACKLOG_DIR.glob("*.md"))
     if not tasks:
         log("No backlog markdown files found in .bqa-team/backlog/")
@@ -275,8 +310,7 @@ def cmd_architect(args: argparse.Namespace) -> None:
         if state["processed_backlog"].get(path.name) and not args.force:
             log(f"Skip already architected: {path.name}")
             continue
-        body = read(path)
-        prompt = architect_prompt(path.name, body, args.repo)
+        prompt = architect_prompt(path, args.repo)
         prompt_path = PROMPTS_DIR / f"architect_{path.stem}.md"
         output_path = ISSUES_DIR / f"{path.stem}.issues.md"
         write(prompt_path, prompt)
@@ -288,37 +322,19 @@ def cmd_architect(args: argparse.Namespace) -> None:
                 continue
             write(output_path, result.stdout)
         else:
-            # Deterministic fallback skeleton for dry-run/manual editing.
-            title = read(path).splitlines()[0].replace("# Business Task:", "").strip() or path.stem
-            labels = "bqa:arch-approved,bqa:ready-dev"
-            if "Static" in title or "static" in body.lower():
-                labels += ",bqa:static-site"
-            if "Visualization" in title or "warcraft" in body.lower():
-                labels += ",bqa:game-ui"
-            if "Codex" in title or "pipeline" in body.lower():
-                labels += ",bqa:codex-team"
-            spec = ISSUE_TEMPLATE.format(
-                context=f"Business task from `{path.name}`. This issue was routed through the technical architect stage.",
-                goal=title,
-                create_change="- To be refined by Architect/Codex output before execution.",
-                do_not_touch="- Private repo data\n- Real session logs\n- Secrets",
-                behavior=body,
-                acceptance="- [ ] Architecture boundaries are respected.\n- [ ] Synthetic data only.\n- [ ] Manual verification steps pass.",
-                verification="go test ./...",
-            )
-            write(output_path, f"---ISSUE---\nTITLE: {title}\nLABELS: {labels}\nBODY:\n{spec}\n---END---\n")
+            write(output_path, fallback_issue_spec(path))
         state["processed_backlog"][path.name] = {"architected_at": now(), "output": str(output_path)}
         save_state(state)
         log(f"Architected {path.name} -> {output_path}")
 
 
 def parse_issue_blocks(text: str) -> list[dict]:
-    blocks = re.findall(r"---ISSUE---\s*(.*?)\s*---END---", text, re.S)
+    blocks = re.findall(r"---ISSUE---(.*?)---END---", text, re.S)
     issues = []
     for block in blocks:
         title_match = re.search(r"^TITLE:\s*(.+)$", block, re.M)
         labels_match = re.search(r"^LABELS:\s*(.+)$", block, re.M)
-        body_match = re.search(r"^BODY:\s*(.*)$", block, re.M | re.S)
+        body_match = re.search(r"^BODY:\s*(.*)", block, re.M | re.S)
         if not title_match or not body_match:
             continue
         labels = []
@@ -328,32 +344,16 @@ def parse_issue_blocks(text: str) -> list[dict]:
     return issues
 
 
-def cmd_ensure_labels(args: argparse.Namespace) -> None:
-    require_tools(["gh"], args.execute)
-    for label, desc in LABELS.items():
-        run([
-            "gh", "label", "create", label,
-            "--repo", args.repo,
-            "--description", desc,
-            "--force",
-        ], execute=args.execute, check=False)
-
-
 def cmd_create_issues(args: argparse.Namespace) -> None:
     require_tools(["gh"], args.execute)
     state = load_state()
-    issue_files = sorted(ISSUES_DIR.glob("*.issues.md"))
-    if not issue_files:
-        log("No generated issue specs found. Run `architect` first.")
-        return
-    for spec_file in issue_files:
-        text = read(spec_file)
-        for issue in parse_issue_blocks(text):
-            key = f"{spec_file.name}:{issue['title']}"
-            if key in state["created_issues"] and not args.force:
+    for spec_path in sorted(ISSUES_DIR.glob("*.issues.md")):
+        for issue in parse_issue_blocks(read(spec_path)):
+            key = f"{spec_path.name}:{issue['title']}"
+            if state["created_issues"].get(key) and not args.force:
                 log(f"Skip existing issue: {issue['title']}")
                 continue
-            body_file = GENERATED_DIR / "tmp" / f"{slugify(issue['title'])}.md"
+            body_file = TMP_DIR / f"{slugify(issue['title'])}.md"
             write(body_file, issue["body"])
             cmd = ["gh", "issue", "create", "--repo", args.repo, "--title", issue["title"], "--body-file", str(body_file)]
             for label in issue["labels"]:
@@ -365,16 +365,14 @@ def cmd_create_issues(args: argparse.Namespace) -> None:
             log(f"Issue ready: {issue['title']} -> {url}")
 
 
-def issue_body(repo: str, number: int, execute: bool) -> str:
+def issue_json(repo: str, number: int, execute: bool) -> str:
     result = run(["gh", "issue", "view", str(number), "--repo", repo, "--json", "title,body,labels", "--jq", "."], execute=execute, capture=True)
-    if not execute:
-        return ""
-    return result.stdout
+    return result.stdout if execute else json.dumps({"title": f"Issue {number}", "body": "DRY-RUN", "labels": []}, indent=2)
 
 
-def dev_prompt(issue_json: str, repo: str) -> str:
+def dev_prompt(raw_issue_json: str, repo: str) -> str:
     developer = load_role("developer")
-    architect = load_role("architect")
+    architect = load_role("architect")[:6000]
     return f"""
 {developer}
 
@@ -382,7 +380,7 @@ def dev_prompt(issue_json: str, repo: str) -> str:
 
 Architectural constraints:
 
-{architect[:6000]}
+{architect}
 
 ---
 
@@ -390,7 +388,7 @@ Implement the following GitHub issue from `{repo}`.
 
 Issue JSON:
 
-{issue_json}
+{raw_issue_json}
 
 Workflow rules:
 - Treat the issue as architecture-approved.
@@ -400,6 +398,7 @@ Workflow rules:
 - Add/update tests where reasonable.
 - Run `go test ./...`.
 - Do not merge anything.
+- If blocked or requirements are ambiguous, output QUESTION_STATUS: OPEN with QUESTION_TYPE and BLOCKS_ISSUE instead of guessing silently.
 
 At the end, summarize:
 - files changed;
@@ -410,49 +409,48 @@ At the end, summarize:
 
 def cmd_dev(args: argparse.Namespace) -> None:
     require_tools(["gh", "git", "codex"], args.execute)
-    if not args.issue:
-        raise SystemExit("dev requires --issue <number>")
-    raw = issue_body(args.repo, args.issue, args.execute)
-    if not args.execute:
-        raw = json.dumps({"title": f"Issue {args.issue}", "body": "DRY-RUN", "labels": []}, indent=2)
+    raw = issue_json(args.repo, args.issue, args.execute)
     title = json.loads(raw).get("title", f"issue-{args.issue}") if raw else f"issue-{args.issue}"
     branch = args.branch or f"codex/issue-{args.issue}-{slugify(title, 32)}"
     prompt = dev_prompt(raw, args.repo)
-    prompt_path = PROMPTS_DIR / f"dev_issue_{args.issue}.md"
-    write(prompt_path, prompt)
+    write(PROMPTS_DIR / f"dev_issue_{args.issue}.md", prompt)
 
     run(["git", "checkout", "-b", branch], execute=args.execute, check=False)
     run(["gh", "issue", "edit", str(args.issue), "--repo", args.repo, "--remove-label", "bqa:ready-dev", "--add-label", "bqa:in-dev"], execute=args.execute, check=False)
     result = run(["codex", "exec", prompt], execute=args.execute, capture=args.execute, check=False)
     if args.execute:
-        write(GENERATED_DIR / "runs" / f"dev_issue_{args.issue}.out.txt", result.stdout + "\n" + result.stderr)
+        out = result.stdout + "\n" + result.stderr
+        write(RUNS_DIR / f"dev_issue_{args.issue}.out.txt", out)
+        if "QUESTION_STATUS: OPEN" in out:
+            run(["gh", "issue", "edit", str(args.issue), "--repo", args.repo, "--add-label", "bqa:blocked"], execute=True, check=False)
+            log("Developer raised an open question. See run output before continuing.")
+            return
     run(["go", "test", "./..."], execute=args.execute, check=False)
     run(["git", "status", "--short"], execute=args.execute, check=False)
     if args.auto_commit:
         run(["git", "add", "."], execute=args.execute)
         run(["git", "commit", "-m", f"Implement issue #{args.issue}: {title}"], execute=args.execute, check=False)
         run(["git", "push", "-u", "origin", branch], execute=args.execute, check=False)
-        pr_body = f"Implements #{args.issue}.\n\nGenerated by BQA Team Orchestrator using Developer role.\n\nChecklist:\n- [ ] go test ./... passes\n- [ ] QA review pending\n- [ ] Business acceptance pending\n"
-        run(["gh", "pr", "create", "--repo", args.repo, "--title", f"Implement #{args.issue}: {title}", "--body", pr_body], execute=args.execute, check=False)
+        body = f"Implements #{args.issue}.\n\nGenerated by BQA Team Orchestrator.\n\nChecklist:\n- [ ] go test ./... passes\n- [ ] QA review pending\n- [ ] Business acceptance pending\n"
+        run(["gh", "pr", "create", "--repo", args.repo, "--title", f"Implement #{args.issue}: {title}", "--body", body], execute=args.execute, check=False)
     run(["gh", "issue", "edit", str(args.issue), "--repo", args.repo, "--remove-label", "bqa:in-dev", "--add-label", "bqa:ready-qa"], execute=args.execute, check=False)
 
 
-def qa_prompt(pr_number: int, repo: str) -> str:
+def qa_prompt(pr: int, repo: str) -> str:
     qa = load_role("qa")
     return f"""
 {qa}
 
 ---
 
-Review PR #{pr_number} in repository `{repo}` as BQA-OS QA / Test Engineer.
+Review PR #{pr} in repository `{repo}` as BQA-OS QA / Test Engineer.
 
 Tasks:
 - inspect the PR diff;
 - verify acceptance criteria from linked issue;
 - run or recommend test commands;
 - check architecture-sensitive QA risks;
-- if implementation is incomplete, create a concise bug report body;
-- do not approve weak work.
+- if implementation is incomplete, create a concise bug report body.
 
 Return:
 QA_STATUS: PASS or FAIL
@@ -464,40 +462,34 @@ BUG_BODY:
 
 def cmd_qa(args: argparse.Namespace) -> None:
     require_tools(["gh", "codex"], args.execute)
-    if not args.pr:
-        raise SystemExit("qa requires --pr <number>")
     prompt = qa_prompt(args.pr, args.repo)
-    prompt_path = PROMPTS_DIR / f"qa_pr_{args.pr}.md"
-    write(prompt_path, prompt)
+    write(PROMPTS_DIR / f"qa_pr_{args.pr}.md", prompt)
     if args.execute:
         diff = run(["gh", "pr", "diff", str(args.pr), "--repo", args.repo], execute=True, capture=True, check=False).stdout
-        prompt = prompt + "\n\nPR diff:\n\n" + diff[:30000]
-        result = run(["codex", "exec", prompt], execute=True, capture=True, check=False)
+        result = run(["codex", "exec", prompt + "\n\nPR diff:\n\n" + diff[:30000]], execute=True, capture=True, check=False)
         out = result.stdout + "\n" + result.stderr
     else:
         out = "QA_STATUS: DRY-RUN\n"
         print("DRY-RUN: would run Codex QA review")
-    qa_out = GENERATED_DIR / "runs" / f"qa_pr_{args.pr}.out.txt"
-    write(qa_out, out)
-    log(f"QA output written: {qa_out}")
+    write(RUNS_DIR / f"qa_pr_{args.pr}.out.txt", out)
     if args.execute and "QA_STATUS: FAIL" in out:
         bug_title = re.search(r"BUG_TITLE:\s*(.+)", out)
         bug_body = re.search(r"BUG_BODY:\s*(.*)", out, re.S)
         title = bug_title.group(1).strip() if bug_title else f"QA bug found in PR #{args.pr}"
         body = bug_body.group(1).strip() if bug_body else out
-        body_file = GENERATED_DIR / "tmp" / f"bug_pr_{args.pr}.md"
+        body_file = TMP_DIR / f"bug_pr_{args.pr}.md"
         write(body_file, body)
         run(["gh", "issue", "create", "--repo", args.repo, "--title", title, "--body-file", str(body_file), "--label", "bqa:bug", "--label", "bqa:qa-failed", "--label", "bqa:ready-dev"], execute=True, check=False)
 
 
-def business_acceptance_prompt(pr_number: int, repo: str) -> str:
+def business_prompt(pr: int, repo: str) -> str:
     business = load_role("business")
     return f"""
 {business}
 
 ---
 
-Perform final business acceptance for PR #{pr_number} in `{repo}`.
+Perform final business acceptance for PR #{pr} in `{repo}`.
 
 Evaluate:
 - Does this deliver visible project value?
@@ -514,11 +506,8 @@ REASON:
 
 def cmd_business_accept(args: argparse.Namespace) -> None:
     require_tools(["gh", "codex"], args.execute)
-    if not args.pr:
-        raise SystemExit("business-accept requires --pr <number>")
-    prompt = business_acceptance_prompt(args.pr, args.repo)
-    prompt_path = PROMPTS_DIR / f"business_accept_pr_{args.pr}.md"
-    write(prompt_path, prompt)
+    prompt = business_prompt(args.pr, args.repo)
+    write(PROMPTS_DIR / f"business_accept_pr_{args.pr}.md", prompt)
     if args.execute:
         diff = run(["gh", "pr", "diff", str(args.pr), "--repo", args.repo], execute=True, capture=True, check=False).stdout
         result = run(["codex", "exec", prompt + "\n\nPR diff:\n\n" + diff[:30000]], execute=True, capture=True, check=False)
@@ -526,15 +515,13 @@ def cmd_business_accept(args: argparse.Namespace) -> None:
     else:
         out = "BUSINESS_STATUS: DRY-RUN\n"
         print("DRY-RUN: would run Codex business acceptance")
-    output_path = GENERATED_DIR / "runs" / f"business_accept_pr_{args.pr}.out.txt"
-    write(output_path, out)
-    log(f"Business acceptance output written: {output_path}")
+    write(RUNS_DIR / f"business_accept_pr_{args.pr}.out.txt", out)
 
 
 def list_ready_issues(repo: str, execute: bool, label: str = "bqa:ready-dev") -> list[int]:
     if not execute:
         return []
-    result = run(["gh", "issue", "list", "--repo", repo, "--label", label, "--state", "open", "--json", "number", "--jq", ".[].[].number"], execute=True, capture=True, check=False)
+    result = run(["gh", "issue", "list", "--repo", repo, "--label", label, "--state", "open", "--json", "number", "--jq", ".[].number"], execute=True, capture=True, check=False)
     nums = []
     for line in result.stdout.splitlines():
         try:
@@ -557,6 +544,11 @@ def cmd_loop(args: argparse.Namespace) -> None:
             log(f"Ready issues: {ready}")
         else:
             log("No ready-dev issues found or dry-run mode.")
+        if args.run_dev and ready:
+            issue = ready[-1] if args.oldest_first else ready[0]
+            log(f"Running dev for issue {issue}")
+            args.issue = issue
+            cmd_dev(args)
         if args.sleep_seconds and i < cycles - 1:
             time.sleep(args.sleep_seconds)
 
@@ -593,6 +585,10 @@ def build_parser() -> argparse.ArgumentParser:
     loop.add_argument("--max-cycles", type=int, default=0)
     loop.add_argument("--sleep-seconds", type=int, default=0)
     loop.add_argument("--force", action="store_true")
+    loop.add_argument("--run-dev", action="store_true", help="Also run dev for one ready issue per cycle")
+    loop.add_argument("--oldest-first", action="store_true", help="Pick oldest ready issue instead of newest")
+    loop.add_argument("--auto-commit", action="store_true", help="Passed to dev when --run-dev is enabled")
+    loop.add_argument("--branch")
 
     return p
 
