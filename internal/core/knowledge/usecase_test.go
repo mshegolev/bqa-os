@@ -2,6 +2,7 @@ package knowledge
 
 import (
 	"context"
+	"errors"
 	"strings"
 	"testing"
 
@@ -11,9 +12,13 @@ import (
 type fakeReader struct {
 	index ports.SessionIndex
 	files map[string]string
+	err   error
 }
 
 func (f fakeReader) LoadSessionIndex(ctx context.Context) (ports.SessionIndex, error) {
+	if f.err != nil {
+		return ports.SessionIndex{}, f.err
+	}
 	return f.index, nil
 }
 
@@ -30,15 +35,23 @@ func (f fakeWriter) WriteKnowledgeArtifact(ctx context.Context, filename string,
 	return nil
 }
 
-func TestUseCaseBuildsKnowledgeArtifacts(t *testing.T) {
+func TestUseCaseBuildsKnowledgeArtifactsFromKeywordLines(t *testing.T) {
 	reader := fakeReader{
 		index: ports.SessionIndex{Entries: []ports.SessionIndexEntry{
-			{OriginalPath: "/tmp/session.jsonl", NormalizedPath: "s1.md"},
-			{OriginalPath: "/Users/me/.factory/logs/droid-log-single.log", NormalizedPath: "droid.md"},
+			{OriginalPath: "/tmp/session-1.md", NormalizedPath: "s1.md"},
+			{OriginalPath: "/tmp/session-2.md", NormalizedPath: "s2.md"},
 		}},
 		files: map[string]string{
-			"s1.md":    "Task: test GraphQL query, REST API endpoint, ETL reconciliation, and null check data validation",
-			"droid.md": "Droid mission worker-transcripts run command failed with traceback",
+			"s1.md": strings.Join([]string{
+				"ETL check: partition row count duplicate schema drift retry late-arriving aggregation null timestamp timezone",
+				"GraphQL functional check: query mutation resolver schema nullable fragment pagination authorization",
+				"API regression check: status code contract payload response auth timeout idempotency",
+			}, "\n"),
+			"s2.md": strings.Join([]string{
+				"Data Quality validation: freshness completeness accuracy consistency reconciliation duplicate null",
+				"Bug signal: regression failed with timeout and error response",
+				"Task: please analyze this repository and create GraphQL tests",
+			}, "\n"),
 		},
 	}
 	writer := fakeWriter{files: map[string]string{}}
@@ -51,19 +64,61 @@ func TestUseCaseBuildsKnowledgeArtifacts(t *testing.T) {
 	if result.SessionsProcessed != 2 {
 		t.Fatalf("expected 2 processed sessions, got %d", result.SessionsProcessed)
 	}
-	if result.ArtifactsCreated != 9 {
-		t.Fatalf("expected 9 artifacts, got %d", result.ArtifactsCreated)
+	if result.ArtifactsCreated != len(DefaultArtifactFilenames) {
+		t.Fatalf("expected %d artifacts, got %d", len(DefaultArtifactFilenames), result.ArtifactsCreated)
 	}
-	if !strings.Contains(writer.files["graphql_patterns.yaml"], "graphql_functional_testing") {
-		t.Fatalf("expected graphql finding, got %s", writer.files["graphql_patterns.yaml"])
+	if len(writer.files) != len(DefaultArtifactFilenames) {
+		t.Fatalf("expected %d written files, got %d", len(DefaultArtifactFilenames), len(writer.files))
 	}
-	if !strings.Contains(writer.files["etl_patterns.yaml"], "etl_validation") {
-		t.Fatalf("expected etl finding, got %s", writer.files["etl_patterns.yaml"])
+
+	assertContains(t, writer.files["etl_patterns.yaml"], "partition")
+	assertContains(t, writer.files["graphql_patterns.yaml"], "resolver")
+	assertContains(t, writer.files["api_patterns.yaml"], "status code")
+	assertContains(t, writer.files["data_quality_patterns.yaml"], "freshness")
+	assertContains(t, writer.files["common_bugs.yaml"], "regression")
+	assertContains(t, writer.files["successful_prompts.yaml"], "successful_prompt_candidate")
+	assertContains(t, writer.files["project_profile.yaml"], "sessions_analyzed: 2")
+}
+
+func TestUseCasePropagatesSessionIndexError(t *testing.T) {
+	reader := fakeReader{err: errors.New("session index not found: .bqa/input/sessions/index.json")}
+	writer := fakeWriter{files: map[string]string{}}
+	uc := UseCase{Reader: reader, Writer: writer, OutputDir: ".bqa/knowledge"}
+
+	_, err := uc.Run(context.Background())
+	if err == nil {
+		t.Fatal("expected error")
 	}
-	if !strings.Contains(writer.files["droid_patterns.yaml"], "factory_droid_session") {
-		t.Fatalf("expected droid finding, got %s", writer.files["droid_patterns.yaml"])
+	if !strings.Contains(err.Error(), "session index not found") {
+		t.Fatalf("expected helpful missing index error, got %v", err)
 	}
-	if strings.Contains(writer.files["graphql_patterns.yaml"], "github_graphql_url") {
-		t.Fatalf("graphql artifact should not be driven by github_graphql_url noise")
+}
+
+func TestUseCaseAlwaysCreatesDefaultArtifactSet(t *testing.T) {
+	reader := fakeReader{
+		index: ports.SessionIndex{Entries: []ports.SessionIndexEntry{{OriginalPath: "/tmp/session.md", NormalizedPath: "empty.md"}}},
+		files: map[string]string{"empty.md": "no matching qa keywords here"},
+	}
+	writer := fakeWriter{files: map[string]string{}}
+	uc := UseCase{Reader: reader, Writer: writer, OutputDir: ".bqa/knowledge"}
+
+	result, err := uc.Run(context.Background())
+	if err != nil {
+		t.Fatalf("Run returned error: %v", err)
+	}
+	if result.ArtifactsCreated != len(DefaultArtifactFilenames) {
+		t.Fatalf("expected %d artifacts, got %d", len(DefaultArtifactFilenames), result.ArtifactsCreated)
+	}
+	for _, filename := range DefaultArtifactFilenames {
+		if _, ok := writer.files[filename]; !ok {
+			t.Fatalf("expected %s to be written", filename)
+		}
+	}
+}
+
+func assertContains(t *testing.T, got string, want string) {
+	t.Helper()
+	if !strings.Contains(got, want) {
+		t.Fatalf("expected %q to contain %q", got, want)
 	}
 }
