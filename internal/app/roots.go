@@ -20,6 +20,7 @@ func sessionRoots(sources string, global bool, local bool) []fsadapter.Root {
 		want["claude"] = true
 		want["codex"] = true
 		want["opencode"] = true
+		want["droid"] = true
 	}
 
 	var roots []fsadapter.Root
@@ -40,11 +41,13 @@ func sessionRoots(sources string, global bool, local bool) []fsadapter.Root {
 		add("codex", filepath.Join(home, ".config", "codex"))
 		add("opencode", filepath.Join(home, ".opencode"))
 		add("opencode", filepath.Join(home, ".config", "opencode"))
+		add("droid", filepath.Join(home, ".droid"))
 	}
 	if local {
 		add("claude", ".claude")
 		add("codex", ".codex")
 		add("opencode", ".opencode")
+		add("droid", ".droid")
 	}
 	return roots
 }
