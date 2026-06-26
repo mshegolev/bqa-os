@@ -19,6 +19,7 @@ func Execute() {
 	rootCmd.AddCommand(ingestCmd())
 	rootCmd.AddCommand(buildCmd())
 	rootCmd.AddCommand(runCmd())
+	rootCmd.AddCommand(brainCmd())
 	rootCmd.AddCommand(codexCmd())
 	rootCmd.AddCommand(claudeCmd())
 	rootCmd.AddCommand(opencodeCmd())
