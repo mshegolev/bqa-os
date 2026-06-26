@@ -89,7 +89,7 @@ func PrintSummary(manifest Manifest) {
 		counts[file.Source]++
 	}
 	fmt.Printf("Discovered session-like files: %d\n", len(manifest.Files))
-	for _, source := range []string{"claude", "codex", "opencode"} {
+	for _, source := range []string{"claude", "codex", "opencode", "droid"} {
 		fmt.Printf("%-8s %d\n", source, counts[source])
 	}
 }
@@ -123,6 +123,9 @@ func candidateRoots(opts Options) []string {
 			add(filepath.Join(home, ".opencode"))
 			add(filepath.Join(home, ".config", "opencode"))
 		}
+		if sources["droid"] {
+			add(filepath.Join(home, "."+"factory"))
+		}
 	}
 
 	if opts.Local {
@@ -134,6 +137,9 @@ func candidateRoots(opts Options) []string {
 		}
 		if sources["opencode"] {
 			add(".opencode")
+		}
+		if sources["droid"] {
+			add("."+"factory")
 		}
 	}
 
@@ -154,6 +160,7 @@ func normalizeSources(values []string) map[string]bool {
 		result["claude"] = true
 		result["codex"] = true
 		result["opencode"] = true
+		result["droid"] = true
 	}
 	return result
 }
@@ -167,6 +174,8 @@ func sourceFromRoot(root string) string {
 		return "codex"
 	case strings.Contains(lower, "opencode"):
 		return "opencode"
+	case strings.Contains(lower, "factory") || strings.Contains(lower, "droid"):
+		return "droid"
 	default:
 		return "unknown"
 	}
@@ -178,7 +187,7 @@ func looksLikeSessionFile(path string) bool {
 	if !(ext == ".json" || ext == ".jsonl" || ext == ".md" || ext == ".txt" || ext == ".log") {
 		return false
 	}
-	keywords := []string{"session", "conversation", "transcript", "chat", "history", "messages", "projects", "logs"}
+	keywords := []string{"session", "conversation", "transcript", "chat", "history", "messages", "projects", "logs", "droid"}
 	for _, keyword := range keywords {
 		if strings.Contains(lower, keyword) {
 			return true
