@@ -28,13 +28,16 @@ func brainCmd() *cobra.Command {
 		},
 	})
 
-	cmd.AddCommand(&cobra.Command{
+	var runSanitize bool
+	syncCmd := &cobra.Command{
 		Use:   "sync",
 		Short: "Commit and push local BQA Brain cache changes",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return brain.Sync(false)
+			return brain.Sync(runSanitize)
 		},
-	})
+	}
+	syncCmd.Flags().BoolVar(&runSanitize, "sanitize", false, "sanitize brain cache before sync")
+	cmd.AddCommand(syncCmd)
 
 	cmd.AddCommand(&cobra.Command{
 		Use:   "status",
