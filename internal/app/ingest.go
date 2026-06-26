@@ -1,8 +1,11 @@
 package app
 
 import (
+	"context"
 	"fmt"
 
+	fsadapter "github.com/mshegolev/bqa-os/internal/adapters/fs"
+	coreingest "github.com/mshegolev/bqa-os/internal/core/ingest"
 	"github.com/spf13/cobra"
 )
 
@@ -10,19 +13,31 @@ func ingestCmd() *cobra.Command {
 	var sources string
 	var global bool
 	var local bool
+	var baseDir string
 
 	cmd := &cobra.Command{
 		Use:   "ingest",
-		Short: "Discover, export, normalize, and analyze sessions",
+		Short: "Ingest sessions through BQA core",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			fmt.Printf("Ingesting sessions: sources=%s global=%v local=%v\n", sources, global, local)
-			fmt.Println("TODO: create .bqa/input/sessions/manifest.json, normalize sessions, update memory and registry")
+			store := &fsadapter.SessionStore{BaseDir: baseDir}
+			uc := coreingest.UseCase{
+				Source: fsadapter.SessionSource{Roots: sessionRoots(sources, global, local)},
+				Store:  store,
+			}
+			result, err := uc.Run(context.Background())
+			if err != nil {
+				return err
+			}
+			fmt.Printf("Discovered: %d\n", result.Discovered)
+			fmt.Printf("Ingested: %d\n", result.Ingested)
+			fmt.Printf("Index: %s/index.json\n", baseDir)
 			return nil
 		},
 	}
 
-	cmd.Flags().StringVar(&sources, "sources", "claude,codex", "comma-separated sources: claude,codex")
-	cmd.Flags().BoolVar(&global, "global", true, "scan global user directories")
-	cmd.Flags().BoolVar(&local, "local", true, "scan current repository")
+	cmd.Flags().StringVar(&sources, "sources", "claude,codex,opencode", "sources")
+	cmd.Flags().BoolVar(&global, "global", true, "global")
+	cmd.Flags().BoolVar(&local, "local", true, "local")
+	cmd.Flags().StringVar(&baseDir, "base-dir", ".bqa/input/sessions", "base dir")
 	return cmd
 }
