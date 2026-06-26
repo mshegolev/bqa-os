@@ -48,7 +48,7 @@ func (u UseCase) Run(ctx context.Context) (Result, error) {
 			profile.ETLSignals++
 			findings["etl"] = append(findings["etl"], Finding{Name: "etl_validation", Domain: "etl", Evidence: evidence(text, etlNeedle(lower)), SourcePath: entry.NormalizedPath})
 		}
-		if isGraphQLSignal(lower) {
+		if isGraphQLSignal(lower, sourcePath) {
 			profile.GraphQLSignals++
 			findings["graphql"] = append(findings["graphql"], Finding{Name: "graphql_functional_testing", Domain: "graphql", Evidence: evidence(text, graphqlNeedle(lower)), SourcePath: entry.NormalizedPath})
 		}
@@ -106,11 +106,26 @@ func isETLSignal(text string, sourcePath string) bool {
 	return hasAny(text, "airflow", "spark", "hive", "oozie", "dag run", "dag_id", "etl_logs", "reconciliation", "source table", "target table", "row count", "parquet", "data pipeline") || strings.Contains(sourcePath, "etl")
 }
 
-func isGraphQLSignal(text string) bool {
+func isGraphQLSignal(text string, sourcePath string) bool {
+	if hasAny(sourcePath, "normalized/droid") {
+		return false
+	}
 	if hasAny(text, "github_graphql_url", "api/graphql", "github api url") {
 		return false
 	}
-	return hasAny(text, "graphql query", "graphql mutation", "graphql schema", "graphql resolver", "graphql introspection", "query {", "mutation {")
+	if !strings.Contains(text, "graphql") {
+		return false
+	}
+	return hasAny(
+		text,
+		"graphql query",
+		"graphql mutation",
+		"graphql schema",
+		"graphql resolver",
+		"graphql introspection",
+		"schema and operations",
+		"queries, mutations",
+	)
 }
 
 func isAPISignal(text string) bool {
@@ -186,7 +201,9 @@ func evidence(text string, needle string) string {
 }
 
 func etlNeedle(text string) string     { return firstNeedle(text, "airflow", "spark", "hive", "oozie", "etl_logs", "reconciliation", "parquet", "row count", "etl") }
-func graphqlNeedle(text string) string { return firstNeedle(text, "graphql query", "graphql mutation", "graphql schema", "graphql resolver", "query {") }
+func graphqlNeedle(text string) string {
+	return firstNeedle(text, "graphql query", "graphql mutation", "graphql schema", "graphql resolver", "graphql")
+}
 func apiNeedle(text string) string     { return firstNeedle(text, "rest api", "http status", "status code", "endpoint", "contract test", "openapi", "request payload") }
 func dqNeedle(text string) string      { return firstNeedle(text, "data quality", "schema drift", "null check", "duplicate check", "row count", "checksum", "dq check") }
 func failureNeedle(text string) string { return firstNeedle(text, "traceback", "exception", "failed", "failure", "error:", "panic", "regression", "flaky") }
