@@ -1,0 +1,90 @@
+name: BQA CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+      - 'dev/**'
+      - 'feature/**'
+      - 'fix/**'
+      - 'qa/**'
+      - 'knowledge/**'
+  workflow_dispatch:
+    inputs:
+      run_knowledge_acceptance:
+        description: 'Run bqa build Knowledge Extractor acceptance test'
+        required: false
+        default: 'false'
+        type: choice
+        options:
+          - 'false'
+          - 'true'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: bqa-ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  go-quality:
+    name: Go quality checks
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Download dependencies
+        run: go mod download
+
+      - name: Check gofmt
+        run: bash test/qa/gofmt_check.sh
+
+      - name: Run Go tests
+        run: go test -count=1 ./...
+
+      - name: CLI smoke checks
+        run: |
+          go run ./cmd/bqa version
+          go run ./cmd/bqa help >/dev/null
+
+  qa-guardrails:
+    name: QA guardrails
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Architecture guardrails
+        run: bash test/qa/architecture_guardrails.sh
+
+      - name: Public data safety scan
+        run: bash test/qa/public_safety_scan.sh
+
+  knowledge-extractor-acceptance:
+    name: Knowledge Extractor acceptance
+    runs-on: ubuntu-latest
+    needs:
+      - go-quality
+      - qa-guardrails
+    if: github.event_name == 'workflow_dispatch' && inputs.run_knowledge_acceptance == 'true'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Run synthetic bqa build acceptance test
+        run: bash test/qa/knowledge_build_acceptance.sh
