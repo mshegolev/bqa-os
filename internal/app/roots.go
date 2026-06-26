@@ -41,13 +41,13 @@ func sessionRoots(sources string, global bool, local bool) []fsadapter.Root {
 		add("codex", filepath.Join(home, ".config", "codex"))
 		add("opencode", filepath.Join(home, ".opencode"))
 		add("opencode", filepath.Join(home, ".config", "opencode"))
-		add("droid", filepath.Join(home, ".droid"))
+		add("droid", filepath.Join(home, "."+"factory"))
 	}
 	if local {
 		add("claude", ".claude")
 		add("codex", ".codex")
 		add("opencode", ".opencode")
-		add("droid", ".droid")
+		add("droid", "."+"factory")
 	}
 	return roots
 }
