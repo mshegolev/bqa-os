@@ -1,0 +1,8 @@
+.serena/
+
+# BQA local runtime artifacts
+.bqa/
+.bqa-team/logs/
+.bqa-team/generated/tmp/
+bqa_team_orchestrator_pack/
+error.log
