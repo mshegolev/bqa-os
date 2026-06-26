@@ -66,9 +66,9 @@ func (u UseCase) Run(ctx context.Context) (Result, error) {
 		if isPromptSignal(lower) {
 			findings["prompts"] = append(findings["prompts"], Finding{Name: "successful_prompt_candidate", Domain: "prompts", Evidence: evidence(text, promptNeedle(lower)), SourcePath: entry.NormalizedPath})
 		}
-		if isDroidSignal(lower, sourcePath) {
+		if isDroidSignal(sourcePath) {
 			profile.DroidSignals++
-			findings["droid"] = append(findings["droid"], Finding{Name: "factory_droid_session", Domain: "droid", Evidence: evidence(text, droidNeedle(lower, sourcePath)), SourcePath: entry.NormalizedPath})
+			findings["droid"] = append(findings["droid"], Finding{Name: "factory_droid_session", Domain: "droid", Evidence: evidence(text, droidNeedle(sourcePath)), SourcePath: entry.NormalizedPath})
 		}
 		if isRuntimeSignal(lower, sourcePath) {
 			profile.RuntimeSignals++
@@ -110,7 +110,7 @@ func isGraphQLSignal(text string) bool {
 	if hasAny(text, "github_graphql_url", "api/graphql", "github api url") {
 		return false
 	}
-	return hasAny(text, "graphql query", "graphql mutation", "graphql schema", "resolver", "introspection", "gql", "query {", "mutation {")
+	return hasAny(text, "graphql query", "graphql mutation", "graphql schema", "resolver", "introspection", "query {", "mutation {") || hasToken(text, "gql")
 }
 
 func isAPISignal(text string) bool {
@@ -132,12 +132,15 @@ func isPromptSignal(text string) bool {
 	return hasAny(text, "task:", "read .bqa", "act as", "please", "your task", "implement", "analyze this repository")
 }
 
-func isDroidSignal(text string, sourcePath string) bool {
-	return hasAny(sourcePath, "/.factory/", "normalized/droid") || hasAny(text, "droid", "factory", "worker-transcripts", "mission", "droid-log", "factory.ai")
+func isDroidSignal(sourcePath string) bool {
+	return hasAny(sourcePath, "/.factory/", "normalized/droid")
 }
 
 func isRuntimeSignal(text string, sourcePath string) bool {
-	return hasAny(sourcePath, "normalized/droid", "normalized/claude", "normalized/codex", "normalized/opencode") && hasAny(text, "tooluse", "tool call", "run command", "shell", "sandbox", "approval", "transcript", "session", "agenttype")
+	if hasAny(sourcePath, "normalized/droid") {
+		return true
+	}
+	return hasAny(sourcePath, "normalized/claude", "normalized/codex", "normalized/opencode") && hasAny(text, "tooluse", "tool call", "run command", "sandbox", "approval", "transcript", "agenttype")
 }
 
 func isMetadataOnly(text string) bool {
@@ -147,6 +150,17 @@ func isMetadataOnly(text string) bool {
 func hasAny(text string, values ...string) bool {
 	for _, value := range values {
 		if strings.Contains(text, value) {
+			return true
+		}
+	}
+	return false
+}
+
+func hasToken(text string, token string) bool {
+	for _, part := range strings.FieldsFunc(text, func(r rune) bool {
+		return !(r >= 'a' && r <= 'z' || r >= '0' && r <= '9' || r == '_')
+	}) {
+		if part == token {
 			return true
 		}
 	}
@@ -183,18 +197,18 @@ func evidence(text string, needle string) string {
 }
 
 func etlNeedle(text string) string     { return firstNeedle(text, "airflow", "spark", "hive", "oozie", "etl_logs", "reconciliation", "parquet", "row count", "etl") }
-func graphqlNeedle(text string) string { return firstNeedle(text, "graphql query", "graphql mutation", "graphql schema", "resolver", "gql", "query {") }
+func graphqlNeedle(text string) string { return firstNeedle(text, "graphql query", "graphql mutation", "graphql schema", "resolver", "query {", "gql") }
 func apiNeedle(text string) string     { return firstNeedle(text, "rest api", "http status", "status code", "endpoint", "contract test", "openapi", "request payload") }
 func dqNeedle(text string) string      { return firstNeedle(text, "data quality", "schema drift", "null check", "duplicate check", "row count", "checksum", "dq check") }
 func failureNeedle(text string) string { return firstNeedle(text, "traceback", "exception", "failed", "failure", "error:", "panic", "regression", "flaky") }
 func promptNeedle(text string) string  { return firstNeedle(text, "task:", "your task", "read .bqa", "act as", "please", "implement", "analyze this repository") }
-func droidNeedle(text string, sourcePath string) string {
+func droidNeedle(sourcePath string) string {
 	if strings.Contains(sourcePath, "/.factory/") {
 		return ".factory"
 	}
-	return firstNeedle(text, "droid", "factory", "worker-transcripts", "mission", "droid-log")
+	return "droid"
 }
-func runtimeNeedle(text string) string { return firstNeedle(text, "tooluse", "tool call", "run command", "shell", "sandbox", "approval", "transcript", "session") }
+func runtimeNeedle(text string) string { return firstNeedle(text, "tooluse", "tool call", "run command", "sandbox", "approval", "transcript", "agenttype") }
 
 func firstNeedle(text string, values ...string) string {
 	for _, value := range values {
