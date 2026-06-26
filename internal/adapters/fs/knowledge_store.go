@@ -3,6 +3,7 @@ package fs
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
 
@@ -23,6 +24,9 @@ func (s KnowledgeStore) LoadSessionIndex(ctx context.Context) (ports.SessionInde
 	path := filepath.Join(s.sessionBase(), "index.json")
 	data, err := os.ReadFile(path)
 	if err != nil {
+		if os.IsNotExist(err) {
+			return ports.SessionIndex{}, fmt.Errorf("session index not found: %s\nRun `bqa discover` and `bqa ingest2` first", path)
+		}
 		return ports.SessionIndex{}, err
 	}
 	var index ports.SessionIndex
