@@ -86,5 +86,8 @@ jobs:
           go-version-file: go.mod
           cache: true
 
-      - name: Run synthetic bqa build acceptance test
+      - name: Missing index negative test
+        run: bash test/qa/knowledge_missing_index_negative.sh
+
+      - name: Synthetic bqa build acceptance test
         run: bash test/qa/knowledge_build_acceptance.sh
