@@ -45,6 +45,19 @@ func (s KnowledgeStore) ReadNormalizedSession(ctx context.Context, path string) 
 	return string(data), nil
 }
 
+func (s KnowledgeStore) ReadKnowledgeArtifact(ctx context.Context, filename string) (string, error) {
+	select {
+	case <-ctx.Done():
+		return "", ctx.Err()
+	default:
+	}
+	data, err := os.ReadFile(filepath.Join(s.knowledgeDir(), filename))
+	if err != nil {
+		return "", err
+	}
+	return string(data), nil
+}
+
 func (s KnowledgeStore) WriteKnowledgeArtifact(ctx context.Context, filename string, content string) error {
 	select {
 	case <-ctx.Done():
@@ -52,6 +65,19 @@ func (s KnowledgeStore) WriteKnowledgeArtifact(ctx context.Context, filename str
 	default:
 	}
 	path := filepath.Join(s.knowledgeDir(), filename)
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		return err
+	}
+	return os.WriteFile(path, []byte(content), 0o600)
+}
+
+func (s KnowledgeStore) WriteBQAArtifact(ctx context.Context, relativePath string, content string) error {
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	default:
+	}
+	path := filepath.Join(filepath.Dir(s.knowledgeDir()), filepath.Clean(relativePath))
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 		return err
 	}
