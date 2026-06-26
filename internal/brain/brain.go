@@ -8,6 +8,8 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
+
+	"github.com/mshegolev/bqa-os/internal/sanitize"
 )
 
 const configFileName = "config.yaml"
@@ -57,7 +59,7 @@ func Pull() error {
 	return run("git", "clone", repoURL, cacheDir)
 }
 
-func Sync(sanitize bool) error {
+func Sync(runSanitize bool) error {
 	_, cacheDir, err := readConfig()
 	if err != nil {
 		return err
@@ -66,8 +68,12 @@ func Sync(sanitize bool) error {
 		return errors.New("brain cache is missing; run: bqa brain pull")
 	}
 
-	if sanitize {
-		fmt.Println("Sanitizer placeholder: no destructive changes applied yet")
+	if runSanitize {
+		result, err := sanitize.Path(cacheDir, true)
+		if err != nil {
+			return err
+		}
+		fmt.Printf("Sanitize scanned=%d changed=%d redactions=%d write=true\n", result.FilesScanned, result.FilesChanged, result.Redactions)
 	}
 
 	if err := run("git", "-C", cacheDir, "status", "--short"); err != nil {
