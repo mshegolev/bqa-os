@@ -1,0 +1,47 @@
+{
+  "processed_backlog": {
+    "001_static_site_app.md": {
+      "architected_at": "2026-06-26T16:46:45.142376+00:00",
+      "output": "/opt/develop/bqa-os/.bqa-team/generated/issues/001_static_site_app.issues.md"
+    },
+    "002_agent_game_visualization.md": {
+      "architected_at": "2026-06-26T16:46:45.143815+00:00",
+      "output": "/opt/develop/bqa-os/.bqa-team/generated/issues/002_agent_game_visualization.issues.md"
+    },
+    "003_codex_team_pipeline.md": {
+      "architected_at": "2026-06-26T16:46:45.145214+00:00",
+      "output": "/opt/develop/bqa-os/.bqa-team/generated/issues/003_codex_team_pipeline.issues.md"
+    }
+  },
+  "created_issues": {
+    "001_static_site_app.issues.md:Static BQA Web App MVP": {
+      "created_at": "2026-06-26T16:49:21.811643+00:00",
+      "url": "https://github.com/mshegolev/bqa-os/issues/25",
+      "labels": [
+        "bqa:arch-approved",
+        "bqa:ready-dev",
+        "bqa:static-site"
+      ]
+    },
+    "002_agent_game_visualization.issues.md:Agent Team Visualization / Warcraft-style Map MVP": {
+      "created_at": "2026-06-26T16:49:24.614076+00:00",
+      "url": "https://github.com/mshegolev/bqa-os/issues/26",
+      "labels": [
+        "bqa:arch-approved",
+        "bqa:ready-dev",
+        "bqa:static-site",
+        "bqa:game-ui"
+      ]
+    },
+    "003_codex_team_pipeline.issues.md:Codex Team Pipeline MVP": {
+      "created_at": "2026-06-26T16:49:27.287343+00:00",
+      "url": "https://github.com/mshegolev/bqa-os/issues/27",
+      "labels": [
+        "bqa:arch-approved",
+        "bqa:ready-dev",
+        "bqa:codex-team"
+      ]
+    }
+  },
+  "runs": []
+}
