@@ -22,6 +22,10 @@ func (u UseCase) Run(ctx context.Context) (Result, error) {
 		"agents/runtime-agent.md":                 runtimeAgent(),
 		"workflows/etl-verification-workflow.md":  etlWorkflow(),
 		"workflows/session-knowledge-workflow.md": sessionWorkflow(),
+		"registry/index.yaml":                     registryIndex(),
+		"registry/skills.yaml":                    registrySkills(),
+		"registry/agents.yaml":                    registryAgents(),
+		"registry/workflows.yaml":                 registryWorkflows(),
 	}
 
 	created := 0
@@ -56,4 +60,20 @@ func etlWorkflow() string {
 
 func sessionWorkflow() string {
 	return "# Session Knowledge Workflow\n\n1. Run `bqa discover`.\n2. Run `bqa ingest`.\n3. Run `bqa build`.\n4. Review generated knowledge, skills, agents, and workflows.\n5. Sanitize before syncing reusable knowledge to Brain.\n"
+}
+
+func registryIndex() string {
+	return "registry:\n  version: 1\n  skills: registry/skills.yaml\n  agents: registry/agents.yaml\n  workflows: registry/workflows.yaml\n  knowledge: knowledge/project_profile.yaml\n"
+}
+
+func registrySkills() string {
+	return "skills:\n  - id: etl-log-investigation\n    path: skills/etl-log-investigation.md\n    domain: etl\n  - id: runtime-trace-review\n    path: skills/runtime-trace-review.md\n    domain: runtime\n"
+}
+
+func registryAgents() string {
+	return "agents:\n  - id: etl-qa-agent\n    path: agents/etl-qa-agent.md\n    domain: etl\n  - id: runtime-agent\n    path: agents/runtime-agent.md\n    domain: runtime\n"
+}
+
+func registryWorkflows() string {
+	return "workflows:\n  - id: etl-verification-workflow\n    path: workflows/etl-verification-workflow.md\n    domain: etl\n  - id: session-knowledge-workflow\n    path: workflows/session-knowledge-workflow.md\n    domain: memory\n"
 }
