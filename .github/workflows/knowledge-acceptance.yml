@@ -1,0 +1,54 @@
+name: Knowledge Extractor Acceptance
+
+on:
+  pull_request:
+    paths:
+      - 'internal/core/knowledge/**'
+      - 'internal/ports/knowledge.go'
+      - 'internal/adapters/fs/**knowledge**'
+      - 'internal/adapters/fs/**session**'
+      - 'internal/app/build.go'
+      - 'cmd/**'
+      - 'README.md'
+      - 'docs/**'
+  push:
+    branches:
+      - main
+      - 'knowledge/**'
+      - 'feature/**'
+    paths:
+      - 'internal/core/knowledge/**'
+      - 'internal/ports/knowledge.go'
+      - 'internal/adapters/fs/**knowledge**'
+      - 'internal/adapters/fs/**session**'
+      - 'internal/app/build.go'
+      - 'cmd/**'
+      - 'README.md'
+      - 'docs/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  bqa-build-acceptance:
+    name: bqa build synthetic acceptance
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Run Go tests first
+        run: go test -count=1 ./...
+
+      - name: Missing index negative test
+        run: bash test/qa/knowledge_missing_index_negative.sh
+
+      - name: Synthetic bqa build acceptance test
+        run: bash test/qa/knowledge_build_acceptance.sh
