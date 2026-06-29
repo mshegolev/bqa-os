@@ -124,6 +124,7 @@ bqa init
 bqa discover
 bqa ingest
 bqa build
+bqa etl-agent-pack
 bqa run "Test DATA-12345"
 bqa runtime detect
 bqa codex
@@ -140,6 +141,7 @@ Implemented:
 - project-local `.bqa` workspace initialization
 - runtime detection for Codex, Claude Code, and OpenCode
 - BQA Master Agent context generation for runtime adapters
+- local ETL QA Agent Pack generation for Codex and Claude Code
 - early one-line installer through `install.sh`
 - GitHub Pages placeholder for BQA-OS Agent Citadel
 
