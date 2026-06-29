@@ -218,8 +218,13 @@ function setStatus(msg, kind) {
 
 /* --- Input handling ------------------------------------------------ */
 function handleArchive(obj, name) {
-  try { renderResult(extract(obj), name); }
-  catch (e) { setStatus("decode failed: " + e.message, "err"); }
+  try {
+    renderResult(extract(obj), name);
+    // Hand the decoded archive to the battle (game.html reads this).
+    try { sessionStorage.setItem("bqa-archive", JSON.stringify(obj)); } catch (_) {}
+    const field = document.getElementById("to-field");
+    if (field) field.style.display = "";
+  } catch (e) { setStatus("decode failed: " + e.message, "err"); }
 }
 function readFile(file) {
   setStatus("reading " + file.name + " ...");
