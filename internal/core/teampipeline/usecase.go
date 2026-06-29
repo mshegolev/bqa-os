@@ -11,6 +11,7 @@ import (
 const (
 	LabelBusinessApproved = "bqa:business-approved"
 	LabelArchApproved     = "bqa:arch-approved"
+	LabelBlocked          = "bqa:blocked"
 	LabelReadyDev         = "bqa:ready-dev"
 	LabelInDev            = "bqa:in-dev"
 	LabelReadyQA          = "bqa:ready-qa"
@@ -110,6 +111,14 @@ func (u UseCase) Run(ctx context.Context, ref ports.TeamIssueRef, opts Options) 
 	}
 
 	switch state {
+	case "blocked":
+		plan.Warnings = append(plan.Warnings, "GitHub issue has bqa:blocked; resolve the blocker before continuing the team pipeline.")
+		plan.Actions = append(plan.Actions, Action{
+			Kind:         "resolve-blocker",
+			Role:         "Technical architect",
+			Description:  "Resolve the blocker and remove bqa:blocked before development, QA, or business acceptance runs.",
+			RemoveLabels: []string{LabelBlocked},
+		})
 	case "ready-business":
 		plan.Actions = append(plan.Actions, businessAcceptanceActions()...)
 	case "qa-failed":
@@ -246,11 +255,30 @@ func businessAcceptanceActions() []Action {
 }
 
 func stagesForState(issue ports.TeamIssue, state string) []Stage {
+	labelSet := issueLabelSet(issue.Labels)
 	businessStatus := "complete"
 	businessReason := "GitHub issue exists as workflow source of truth."
 	if issue.Number == 0 || strings.TrimSpace(issue.Title) == "" {
 		businessStatus = "blocked"
 		businessReason = "GitHub issue number and title are required."
+	}
+
+	if state == "blocked" {
+		archStatus := "blocked"
+		archReason := "Issue has bqa:blocked; architecture review cannot proceed."
+		if labelSet[LabelArchApproved] {
+			archStatus = "complete"
+			archReason = "Architecture approval is satisfied, but the issue is blocked."
+		}
+
+		blockedReason := "Issue has bqa:blocked; resolve the blocker before continuing."
+		return []Stage{
+			{ID: "business-intake", Name: "Business intake", Role: "Business owner", Status: businessStatus, Reason: businessReason, Labels: []string{LabelBusiness}},
+			{ID: "architecture-review", Name: "Architecture review", Role: "Technical architect", Status: archStatus, Reason: archReason, Labels: []string{LabelArchApproved, LabelNeedsArch, LabelBlocked}},
+			{ID: "development", Name: "Development", Role: "Developer", Status: "blocked", Reason: blockedReason, Labels: []string{LabelReadyDev, LabelInDev, LabelBlocked}},
+			{ID: "qa", Name: "QA", Role: "QA", Status: "blocked", Reason: blockedReason, Labels: []string{LabelReadyQA, LabelQAFailed, LabelBug, LabelBlocked}},
+			{ID: "business-acceptance", Name: "Business acceptance", Role: "Business owner", Status: "blocked", Reason: blockedReason, Labels: []string{LabelReadyBusiness, LabelBusinessApproved, LabelDone, LabelBlocked}},
+		}
 	}
 
 	archStatus := "blocked"
@@ -359,6 +387,7 @@ func currentState(labels []ports.TeamIssueLabel) string {
 		label string
 		state string
 	}{
+		{LabelBlocked, "blocked"},
 		{LabelDone, "done"},
 		{LabelBusinessApproved, "business-approved"},
 		{LabelReadyBusiness, "ready-business"},
