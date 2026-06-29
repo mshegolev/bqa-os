@@ -12,6 +12,22 @@ type Finding struct {
 	SourcePath string
 }
 
+type NormalizedSession struct {
+	SourcePath         string
+	NormalizedPath     string
+	NormalizedMarkdown string
+}
+
+type ExtractionResult struct {
+	Profile             ProjectProfile
+	ETLPatterns         []Finding
+	GraphQLPatterns     []Finding
+	APIPatterns         []Finding
+	DataQualityPatterns []Finding
+	CommonBugs          []Finding
+	SuccessfulPrompts   []Finding
+}
+
 type Result struct {
 	SessionsProcessed int
 	ArtifactsCreated  int
@@ -24,6 +40,4 @@ type ProjectProfile struct {
 	GraphQLSignals int
 	APISignals     int
 	DQSignals      int
-	DroidSignals   int
-	RuntimeSignals int
 }

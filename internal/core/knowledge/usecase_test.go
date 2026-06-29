@@ -30,15 +30,34 @@ func (f fakeWriter) WriteKnowledgeArtifact(ctx context.Context, filename string,
 	return nil
 }
 
-func TestUseCaseBuildsKnowledgeArtifacts(t *testing.T) {
+func TestExtractorFindsSyntheticETLKnowledge(t *testing.T) {
+	session := NormalizedSession{
+		SourcePath:     "synthetic/etl-session.md",
+		NormalizedPath: "normalized/etl-session.md",
+		NormalizedMarkdown: "Task: investigate ETL row count mismatch.\n" +
+			"The aggregation had duplicate rows, null timestamps, and timezone drift.\n" +
+			"Failure: retry exposed a schema drift regression.\n" +
+			"Successful prompt: compare source and target row count, then verify data quality reconciliation.",
+	}
+
+	result := Extractor{}.Extract([]NormalizedSession{session})
+
+	if result.Profile.Sessions != 1 {
+		t.Fatalf("expected 1 profiled session, got %d", result.Profile.Sessions)
+	}
+	assertFinding(t, result.ETLPatterns, "etl_validation", "row count")
+	assertFinding(t, result.DataQualityPatterns, "data_quality_validation", "duplicate")
+	assertFinding(t, result.CommonBugs, "common_failure_signal", "schema drift")
+	assertFinding(t, result.SuccessfulPrompts, "successful_prompt_candidate", "compare source")
+}
+
+func TestUseCaseWritesSevenKnowledgeArtifacts(t *testing.T) {
 	reader := fakeReader{
 		index: ports.SessionIndex{Entries: []ports.SessionIndexEntry{
-			{OriginalPath: "/tmp/session.jsonl", NormalizedPath: "s1.md"},
-			{OriginalPath: "/Users/me/.factory/logs/droid-log-single.log", NormalizedPath: "droid.md"},
+			{OriginalPath: "synthetic/etl-session.md", NormalizedPath: "etl.md"},
 		}},
 		files: map[string]string{
-			"s1.md":    "Task: test GraphQL query, REST API endpoint, ETL reconciliation, and null check data validation",
-			"droid.md": "Droid mission worker-transcripts run command failed with traceback",
+			"etl.md": "Task: verify ETL partition freshness. Duplicate row count failed after retry. Prompt: check data quality reconciliation.",
 		},
 	}
 	writer := fakeWriter{files: map[string]string{}}
@@ -48,22 +67,60 @@ func TestUseCaseBuildsKnowledgeArtifacts(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Run returned error: %v", err)
 	}
-	if result.SessionsProcessed != 2 {
-		t.Fatalf("expected 2 processed sessions, got %d", result.SessionsProcessed)
+	if result.SessionsProcessed != 1 {
+		t.Fatalf("expected 1 processed session, got %d", result.SessionsProcessed)
 	}
-	if result.ArtifactsCreated != 9 {
-		t.Fatalf("expected 9 artifacts, got %d", result.ArtifactsCreated)
+	if result.ArtifactsCreated != 7 {
+		t.Fatalf("expected 7 artifacts, got %d", result.ArtifactsCreated)
 	}
-	if !strings.Contains(writer.files["graphql_patterns.yaml"], "graphql_functional_testing") {
-		t.Fatalf("expected graphql finding, got %s", writer.files["graphql_patterns.yaml"])
+
+	expectedFiles := []string{
+		"etl_patterns.yaml",
+		"graphql_patterns.yaml",
+		"api_patterns.yaml",
+		"data_quality_patterns.yaml",
+		"common_bugs.yaml",
+		"successful_prompts.yaml",
+		"project_profile.yaml",
 	}
-	if !strings.Contains(writer.files["etl_patterns.yaml"], "etl_validation") {
-		t.Fatalf("expected etl finding, got %s", writer.files["etl_patterns.yaml"])
+	for _, filename := range expectedFiles {
+		if _, ok := writer.files[filename]; !ok {
+			t.Fatalf("expected artifact %s to be written", filename)
+		}
 	}
-	if !strings.Contains(writer.files["droid_patterns.yaml"], "factory_droid_session") {
-		t.Fatalf("expected droid finding, got %s", writer.files["droid_patterns.yaml"])
+	if _, ok := writer.files["droid_patterns.yaml"]; ok {
+		t.Fatalf("did not expect droid_patterns.yaml to be written")
 	}
-	if strings.Contains(writer.files["graphql_patterns.yaml"], "github_graphql_url") {
-		t.Fatalf("graphql artifact should not be driven by github_graphql_url noise")
+	if _, ok := writer.files["runtime_patterns.yaml"]; ok {
+		t.Fatalf("did not expect runtime_patterns.yaml to be written")
 	}
+}
+
+func TestExtractorRedactsSensitiveEvidence(t *testing.T) {
+	session := NormalizedSession{
+		SourcePath:         "synthetic/api-session.md",
+		NormalizedPath:     "normalized/api-session.md",
+		NormalizedMarkdown: "Task: test REST API endpoint with password=secret123 and qa.owner@example.com",
+	}
+
+	result := Extractor{}.Extract([]NormalizedSession{session})
+
+	assertFinding(t, result.APIPatterns, "api_contract_testing", "password=[REDACTED]")
+	if strings.Contains(result.APIPatterns[0].Evidence, "secret123") {
+		t.Fatalf("expected password value to be redacted, got %q", result.APIPatterns[0].Evidence)
+	}
+	if strings.Contains(result.APIPatterns[0].Evidence, "qa.owner@example.com") {
+		t.Fatalf("expected email to be redacted, got %q", result.APIPatterns[0].Evidence)
+	}
+}
+
+func assertFinding(t *testing.T, findings []Finding, name string, evidence string) {
+	t.Helper()
+
+	for _, finding := range findings {
+		if finding.Name == name && strings.Contains(strings.ToLower(finding.Evidence), strings.ToLower(evidence)) {
+			return
+		}
+	}
+	t.Fatalf("expected finding %q with evidence containing %q, got %#v", name, evidence, findings)
 }

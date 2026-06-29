@@ -117,12 +117,43 @@ Task:
 Test DATA-12345.
 ```
 
+## First local knowledge workflow
+
+BQA-OS is local-first: it helps a human QA owner and an AI coding runtime reuse project context from local artifacts. It is not a fully autonomous QA agent, and generated knowledge should be reviewed before use.
+
+The first end-to-end workflow is:
+
+```bash
+bqa discover
+bqa ingest2
+bqa build
+```
+
+`bqa discover` finds supported local session sources. `bqa ingest2` normalizes discovered sessions into `.bqa/input/sessions/`. `bqa build` reads the normalized session index and writes reusable QA knowledge into `.bqa/knowledge/`.
+
+Generated knowledge files:
+
+```text
+.bqa/knowledge/etl_patterns.yaml
+.bqa/knowledge/graphql_patterns.yaml
+.bqa/knowledge/api_patterns.yaml
+.bqa/knowledge/data_quality_patterns.yaml
+.bqa/knowledge/common_bugs.yaml
+.bqa/knowledge/successful_prompts.yaml
+.bqa/knowledge/project_profile.yaml
+```
+
+These files give Codex a compact QA context pack: domain patterns, recurring failures, useful prompt candidates, and a project profile. Use synthetic or sanitized sessions for public demos, and do not commit real logs, secrets, customer data, or private `.bqa/` outputs.
+
+See [docs/knowledge-extractor.md](docs/knowledge-extractor.md) for a synthetic ETL walkthrough and manual verification commands.
+
 ## Commands available now
 
 ```bash
 bqa init
 bqa discover
 bqa ingest
+bqa ingest2
 bqa build
 bqa run "Test DATA-12345"
 bqa runtime detect
@@ -140,6 +171,7 @@ Implemented:
 - project-local `.bqa` workspace initialization
 - runtime detection for Codex, Claude Code, and OpenCode
 - BQA Master Agent context generation for runtime adapters
+- local knowledge extraction into seven `.bqa/knowledge/*.yaml` artifacts
 - early one-line installer through `install.sh`
 - GitHub Pages placeholder for BQA-OS Agent Citadel
 
