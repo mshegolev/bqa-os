@@ -13,6 +13,7 @@ import (
 func buildCmd() *cobra.Command {
 	var sessionBaseDir string
 	var knowledgeDir string
+	var includeSalesPackage bool
 
 	cmd := &cobra.Command{
 		Use:   "build",
@@ -27,22 +28,28 @@ func buildCmd() *cobra.Command {
 				return err
 			}
 
-			artifactUC := coreartifacts.UseCase{Writer: store}
+			artifactUC := coreartifacts.UseCase{Writer: store, IncludeSalesPackage: includeSalesPackage}
 			artifactResult, err := artifactUC.Run(ctx)
 			if err != nil {
 				return err
 			}
 
-			fmt.Printf("Sessions processed: %d\n", knowledgeResult.SessionsProcessed)
-			fmt.Printf("Knowledge artifacts created: %d\n", knowledgeResult.ArtifactsCreated)
-			fmt.Printf("BQA artifacts created: %d\n", artifactResult.ArtifactsCreated)
-			fmt.Printf("Knowledge dir: %s\n", knowledgeDir)
-			fmt.Println("Generated dirs: .bqa/skills .bqa/agents .bqa/workflows .bqa/registry")
+			out := cmd.OutOrStdout()
+			fmt.Fprintf(out, "Sessions processed: %d\n", knowledgeResult.SessionsProcessed)
+			fmt.Fprintf(out, "Knowledge artifacts created: %d\n", knowledgeResult.ArtifactsCreated)
+			fmt.Fprintf(out, "BQA artifacts created: %d\n", artifactResult.ArtifactsCreated)
+			fmt.Fprintf(out, "Knowledge dir: %s\n", knowledgeDir)
+			generatedDirs := ".bqa/skills .bqa/agents .bqa/workflows .bqa/registry"
+			if includeSalesPackage {
+				generatedDirs = ".bqa/skills .bqa/agents .bqa/workflows .bqa/sales .bqa/registry"
+			}
+			fmt.Fprintf(out, "Generated dirs: %s\n", generatedDirs)
 			return nil
 		},
 	}
 
 	cmd.Flags().StringVar(&sessionBaseDir, "sessions", ".bqa/input/sessions", "session input directory")
 	cmd.Flags().StringVar(&knowledgeDir, "knowledge-dir", ".bqa/knowledge", "knowledge output directory")
+	cmd.Flags().BoolVar(&includeSalesPackage, "sales-package", false, "also generate internal pilot sales package artifacts")
 	return cmd
 }
