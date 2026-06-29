@@ -47,6 +47,26 @@
     ul.recs li { padding: 6px 0 6px 18px; position: relative; font-size: 19px; color: var(--parchment); }
     ul.recs li::before { content: "»"; position: absolute; left: 0; color: var(--forest-bright); }
 
+    pre.code {
+      background: var(--stone-900); color: var(--forest-bright);
+      padding: 14px; margin: 12px 0; overflow-x: auto; font-size: 16px; line-height: 1.4;
+      box-shadow: inset 2px 2px 0 var(--bevel-dark), inset -2px -2px 0 rgba(255,255,255,.04);
+    }
+    pre.code .k { color: var(--gold); }
+    .domains { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0 4px; }
+    .field-table { width: 100%; border-collapse: collapse; margin: 8px 0; font-size: 18px; }
+    .field-table th, .field-table td { text-align: left; padding: 6px 8px; border-bottom: 2px solid rgba(0,0,0,.3); }
+    .field-table th { font-family: var(--font-display); font-size: 8px; color: var(--gold); }
+    .field-table code { color: var(--sky-bright); }
+    .howto-steps { counter-reset: step; list-style: none; padding: 0; margin: 6px 0; }
+    .howto-steps li { position: relative; padding: 6px 0 6px 30px; font-size: 19px; }
+    .howto-steps li::before {
+      counter-increment: step; content: counter(step);
+      position: absolute; left: 0; top: 4px; width: 20px; height: 20px;
+      font-family: var(--font-display); font-size: 8px; color: var(--stone-900);
+      background: var(--gold); display: grid; place-items: center;
+    }
+
     .legend { font-size: 16px; color: var(--stone-500); margin-top: 10px; }
     #results { display: none; }
   </style>
@@ -119,6 +139,65 @@
         </section>
       </section>
     </div>
+
+    <section class="panel" id="howto">
+      <div class="panel-title">⛏ How to build an archive</div>
+      <p>An archive is a plain <strong>JSON file</strong> with a <code>sessions</code> array. Each session is one sanitized QA note, log excerpt, or transcript. The decoder reads each session's <code>domain</code> to muster the matching agent — everything stays in your browser.</p>
+
+      <ol class="howto-steps">
+        <li>Create a file, e.g. <code>my-archive.json</code>.</li>
+        <li>Add a <code>sessions</code> array; give each entry a <code>domain</code> and some <code>text</code>.</li>
+        <li>Use only the recognized domains below (others are ignored).</li>
+        <li>Save, then drop it on the intake panel or pick it with <em>Choose file</em>.</li>
+      </ol>
+
+      <table class="field-table">
+        <thead><tr><th>Field</th><th>Required</th><th>What it is</th></tr></thead>
+        <tbody>
+          <tr><td><code>id</code></td><td>no</td><td>your reference for the session</td></tr>
+          <tr><td><code>tool</code></td><td>no</td><td>where it came from (claude, codex, opencode…)</td></tr>
+          <tr><td><code>domain</code></td><td><strong>yes</strong></td><td>QA domain — drives extraction (see below)</td></tr>
+          <tr><td><code>title</code></td><td>no</td><td>short human label</td></tr>
+          <tr><td><code>text</code></td><td>recommended</td><td>the sanitized session content</td></tr>
+        </tbody>
+      </table>
+
+      <p>Recognized <code>domain</code> values:</p>
+      <div class="domains">
+        <span class="chip">etl</span>
+        <span class="chip">graphql</span>
+        <span class="chip">api</span>
+        <span class="chip">data_quality</span>
+        <span class="chip">bugs</span>
+        <span class="chip">prompts</span>
+      </div>
+
+      <p>Minimal example — copy, edit, save as <code>.json</code>:</p>
+<pre class="code">{
+  <span class="k">"archive"</span>: "my-team-archive",
+  <span class="k">"version"</span>: 1,
+  <span class="k">"sessions"</span>: [
+    {
+      <span class="k">"id"</span>: "s-001",
+      <span class="k">"tool"</span>: "claude",
+      <span class="k">"domain"</span>: "etl",
+      <span class="k">"title"</span>: "Airflow reconciliation",
+      <span class="k">"text"</span>: "airflow dag failure, spark row count vs hive, reconciliation on parquet"
+    },
+    {
+      <span class="k">"id"</span>: "s-002",
+      <span class="k">"domain"</span>: "api",
+      <span class="k">"text"</span>: "rest endpoint wrong http status, added contract test for openapi payload"
+    }
+  ]
+}</pre>
+
+      <div class="controls">
+        <a class="btn secondary" href="fixtures/demo-archive.json" download>⬇ Download template archive</a>
+        <button class="btn" id="demo2">Try it with demo data</button>
+      </div>
+      <p class="legend">Synthetic data only. Never put real session logs, secrets, or customer data in an archive.</p>
+    </section>
 
     <footer class="foot">BQA-OS · synthetic demo · pixels forged client-side</footer>
   </div>
