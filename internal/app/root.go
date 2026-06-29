@@ -29,6 +29,7 @@ func Execute() {
 	rootCmd.AddCommand(claudeCmd())
 	rootCmd.AddCommand(opencodeCmd())
 	rootCmd.AddCommand(runtimeCmd())
+	rootCmd.AddCommand(teamCmd())
 	rootCmd.AddCommand(doctorCmd())
 
 	if err := rootCmd.Execute(); err != nil {
