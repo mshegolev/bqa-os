@@ -1,37 +1,33 @@
-# BQA-OS Issue Spec Template
+# BQA Issue Spec Template
 
-Используй этот шаблон для задач разработчикам.
-
----
+Use this template for developer-ready tasks.
 
 ## Title
 
-Короткое название задачи.
+Short task name.
 
 ## Context
 
-Почему задача нужна и частью какого workflow она является.
-
-Пример:
-
-This task is part of the Knowledge Extractor vertical slice. BQA-OS should read normalized sessions from `.bqa/input/sessions/` and write reusable QA knowledge artifacts to `.bqa/knowledge/`.
+Why this task exists and which workflow it supports.
 
 ## Goal
 
-Что должно заработать после задачи.
+What should work after this task.
 
 ## Scope
 
 ### Create/change
 
 - `internal/...`
+- `site/...`
+- `docs/...`
 
 ### Do not touch
 
-- `internal/...`
 - private repo data
 - real session logs
 - secrets
+- unrelated code
 
 ## Architecture
 
@@ -49,15 +45,15 @@ Cobra must stay thin.
 
 ## Behavior
 
-Опиши expected behavior.
+Expected behavior.
 
 ## Acceptance criteria
 
-- [ ] Works on synthetic test data.
+- [ ] Works on synthetic data.
 - [ ] Does not require private data.
 - [ ] Does not break existing commands.
-- [ ] Has unit tests where reasonable.
-- [ ] `go test ./...` passes.
+- [ ] Has tests where reasonable.
+- [ ] `go test ./...` passes when Go code changes.
 - [ ] Errors are clear and actionable.
 
 ## Manual verification
@@ -69,8 +65,8 @@ go run ./cmd/bqa <command>
 
 ## Expected output
 
-Опиши stdout и файлы, которые должны появиться.
+Describe stdout and generated files.
 
 ## Notes for developer
 
-Дополнительные ограничения или подсказки.
+Additional constraints or hints.
