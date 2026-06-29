@@ -418,12 +418,33 @@ function loadOfficial() {
   } catch (_) {}
 }
 function getScores() { try { return JSON.parse(localStorage.getItem(LB_KEY) || "[]"); } catch (_) { return []; } }
+function rankAgainstOfficial(waves, official) {
+  if (!waves || waves <= 0) return 0;
+  const rows = (official || []).slice(0, 3).sort((a, b) => (b.waves || 0) - (a.waves || 0));
+  for (let i = 0; i < 3; i++) {
+    if (!rows[i] || waves > (rows[i].waves || 0)) return i + 1;
+  }
+  return 0;
+}
+function buildLeaderboardRows(official, lastRecord) {
+  const rows = (official || []).slice(0, 3).map((r) => ({ ...r }));
+  if (lastRecord && lastRecord.takesLead) {
+    rows.unshift({
+      name: lastRecord.name || "You",
+      waves: lastRecord.waves || 0,
+      isFanfareLeader: true,
+    });
+  }
+  return rows.slice(0, 3);
+}
 function recordScore(waves) {
   let name = "You";
-  const beatsOfficial = waves > 0 && (G.official.length < 3 || waves > G.official[G.official.length - 1].waves);
+  const officialRank = rankAgainstOfficial(waves, G.official);
+  const beatsOfficial = officialRank > 0;
+  const takesLead = officialRank === 1;
   try {
     if (typeof window !== "undefined" && window.prompt) {
-      const n = window.prompt((beatsOfficial ? "New top-3! " : "") + "You survived " + waves + " waves. Enter your name:", "");
+      const n = window.prompt((takesLead ? "New #1! " : beatsOfficial ? "New top-3! " : "") + "You survived " + waves + " waves. Enter your name:", "");
       if (n) name = n.slice(0, 24);
     }
   } catch (_) {}
@@ -433,19 +454,31 @@ function recordScore(waves) {
     s.sort((a, b) => b.waves - a.waves);
     localStorage.setItem(LB_KEY, JSON.stringify(s.slice(0, 10)));
   } catch (_) {}
-  G.lastRecord = { name, waves, beatsOfficial };
+  G.lastRecord = { name, waves, beatsOfficial, officialRank, takesLead };
 }
 function renderLeaderboard(box) {
   if (!box) return;
   box.replaceChildren();
-  (G.official || []).slice(0, 3).forEach((r, i) => {
-    const row = el("div", "lb-row");
+  buildLeaderboardRows(G.official, G.lastRecord).forEach((r, i) => {
+    const row = el("div", "lb-row" + (r.isFanfareLeader ? " fanfare-leader" : ""));
     row.appendChild(el("span", "lb-rank", ["🥇", "🥈", "🥉"][i] || ("#" + (i + 1))));
-    row.appendChild(el("span", "lb-waves", (r.name || "—") + " — " + r.waves + " waves"));
+    row.appendChild(el("span", "lb-waves", (r.name || "—") + " — " + r.waves + " waves" + (r.isFanfareLeader ? " · new leader" : "")));
     box.appendChild(row);
   });
   const mine = getScores()[0];
   if (mine) { const r = el("div", "lb-row"); r.appendChild(el("span", "lb-rank", "you")); r.appendChild(el("span", "lb-waves", "Your best: " + mine.waves + " waves")); box.appendChild(r); }
+}
+function triggerLeaderFanfare(card) {
+  if (!card || !G.lastRecord || !G.lastRecord.takesLead) return;
+  const burst = el("div", "fanfare-burst");
+  for (let i = 0; i < 18; i++) {
+    const spark = el("span");
+    spark.style.setProperty("--tx", Math.round(Math.cos((Math.PI * 2 * i) / 18) * 180) + "px");
+    spark.style.setProperty("--ty", Math.round(Math.sin((Math.PI * 2 * i) / 18) * 95) + "px");
+    spark.style.setProperty("--d", (i % 5) * 0.045 + "s");
+    burst.appendChild(spark);
+  }
+  card.appendChild(burst);
 }
 
 /* ---- minimap --------------------------------------------- */
@@ -559,7 +592,7 @@ function loop(ts) {
   if (G.state === "won" || G.state === "lost") {
     if (G.mode === "survival" && !G.recorded) { if (G.state === "lost") recordScore(G.wavesSurvived); G.recorded = true; }
     if (!G.awarded) { awardPoints(); G.awarded = true; }
-    sfx(G.state === "won" ? "win" : "lose");
+    sfx(G.lastRecord && G.lastRecord.takesLead ? "fanfare" : G.state === "won" ? "win" : "lose");
     return showModal();
   }
   requestAnimationFrame(loop);
@@ -601,7 +634,8 @@ function renderEventLog() {
 function showModal() {
   render();
   const m = $("#modal"); m.style.display = "grid"; m.replaceChildren();
-  const card = el("div", "modal-card");
+  const leader = G.lastRecord && G.lastRecord.takesLead;
+  const card = el("div", "modal-card" + (leader ? " leader-card" : ""));
   const survival = G.mode === "survival";
   card.appendChild(el("h2", null, survival ? "THE CITADEL FALLS" : (G.state === "won" ? "RELEASE SHIPPED" : "PROJECT LOST")));
   card.appendChild(el("p", null, survival ? ("You outlasted " + G.wavesSurvived + " wave" + (G.wavesSurvived === 1 ? "" : "s") + ".") : (G.result || "")));
@@ -619,12 +653,13 @@ function showModal() {
   card.appendChild(stats);
   card.appendChild(el("p", "newtop", "★ Earned " + (G.earnedPoints || 0) + " points" + (G.broughtArchive ? " (incl. +25% for your own agents)" : "") + "."));
   if (survival) {
-    if (G.lastRecord && G.lastRecord.beatsOfficial) card.appendChild(el("p", "newtop", "🏆 New official top-3 — " + G.lastRecord.name + ", " + G.lastRecord.waves + " waves! It will be committed to the git leaderboard."));
+    if (leader) card.appendChild(el("p", "newtop fanfare-copy", "♛ New #1 — " + G.lastRecord.name + " takes the leading row with " + G.lastRecord.waves + " waves! It will be committed to the git leaderboard."));
+    else if (G.lastRecord && G.lastRecord.beatsOfficial) card.appendChild(el("p", "newtop", "🏆 New official top-3 — " + G.lastRecord.name + ", " + G.lastRecord.waves + " waves! It will be committed to the git leaderboard."));
     card.appendChild(el("div", "panel-title", "★ Leaderboard")); const lb = el("div", "lb"); renderLeaderboard(lb); card.appendChild(lb);
   }
   card.appendChild(el("div", "panel-title", "⚒ Armory — spend points to upgrade")); const arm = el("div", "armory"); arm.id = "upgrades-modal"; renderArmory(arm); card.appendChild(arm);
   const btn = el("button", "btn", "⟲ Play again"); btn.addEventListener("click", () => location.reload());
-  card.appendChild(btn); m.appendChild(card);
+  card.appendChild(btn); triggerLeaderFanfare(card); m.appendChild(card);
 }
 
 /* ---- input ----------------------------------------------- */

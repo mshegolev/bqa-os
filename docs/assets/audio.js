@@ -58,6 +58,7 @@
     } else if (name === "command") { tone(660, 0.06, "square", 0, 0.15); }
     else if (name === "kill") { tone(220, 0.12, "sawtooth", 0, 0.18); tone(120, 0.14, "sawtooth", now + 0.05, 0.15); }
     else if (name === "wave") { tone(98, 0.32, "sawtooth", 0, 0.2); tone(146, 0.32, "sawtooth", now + 0.16, 0.17); }
+    else if (name === "fanfare") { [523, 659, 784, 1047, 1319].forEach((f, i) => tone(f, 0.2, "square", now + i * 0.1, 0.18)); tone(262, 0.48, "triangle", now, 0.16); music(false); }
     else if (name === "win") { [523, 659, 784, 1047].forEach((f, i) => tone(f, 0.18, "square", now + i * 0.12, 0.16)); music(false); }
     else if (name === "lose") { [392, 330, 262, 196].forEach((f, i) => tone(f, 0.26, "triangle", now + i * 0.14, 0.16)); music(false); }
   }

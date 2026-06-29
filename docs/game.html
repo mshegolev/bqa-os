@@ -37,13 +37,43 @@
     #inspect .wk, #inspect .wk b { font-size: 16px; color: var(--blood); }
 
     #modal { display: none; position: fixed; inset: 0; place-content: center; background: rgba(8,8,12,.8); z-index: 50; padding: 16px; }
-    .modal-card { background: linear-gradient(180deg,var(--stone-700),var(--stone-800)); border: var(--px) solid var(--stone-900); box-shadow: inset 3px 3px 0 var(--bevel-light), inset -3px -3px 0 var(--bevel-dark), 8px 8px 0 rgba(0,0,0,.5); padding: 22px; max-width: 460px; }
+    .modal-card { background: linear-gradient(180deg,var(--stone-700),var(--stone-800)); border: var(--px) solid var(--stone-900); box-shadow: inset 3px 3px 0 var(--bevel-light), inset -3px -3px 0 var(--bevel-dark), 8px 8px 0 rgba(0,0,0,.5); padding: 22px; max-width: 460px; position: relative; overflow: hidden; }
     .modal-card h2 { color: var(--gold); } .stats { list-style: none; padding: 0; margin: 12px 0; }
     .stats li { padding: 5px 0 5px 16px; position: relative; font-size: 18px; } .stats li::before { content: "◆"; position: absolute; left: 0; color: var(--forest-bright); }
     .lb { font-size: 15px; } .lb-box { margin-top: 6px; }
     .lb-row { display: flex; gap: 8px; padding: 3px 0; border-bottom: 1px solid rgba(0,0,0,.25); }
     .lb-rank { color: var(--gold); width: 30px; } .lb-waves { flex: 1; color: var(--bone); } .lb-date { color: var(--stone-500); }
     .newtop { color: var(--gold); font-size: 16px; }
+    .leader-card { animation: leader-card-glow 1.2s ease-out both; }
+    .leader-card > * { position: relative; z-index: 2; }
+    .fanfare-copy { text-shadow: 0 0 9px rgba(242,193,78,.78); }
+    .lb-row.fanfare-leader { min-height: 24px; align-items: center; background: rgba(242,193,78,.14); border-bottom-color: rgba(242,193,78,.6); box-shadow: 0 0 0 2px rgba(242,193,78,.32), 0 0 18px rgba(123,196,90,.45); animation: fly-to-first 1.05s cubic-bezier(.18,.9,.25,1.25) both; transform-origin: center; }
+    .lb-row.fanfare-leader .lb-rank { animation: crown-pop .85s ease-out .2s both; }
+    .fanfare-burst { position: absolute; inset: 0; overflow: hidden; pointer-events: none; z-index: 1; }
+    .fanfare-burst span { position: absolute; left: 50%; top: 34%; width: 7px; height: 7px; background: var(--gold); box-shadow: 0 0 8px rgba(242,193,78,.8); opacity: 0; animation: spark-burst .9s ease-out var(--d) both; }
+    .fanfare-burst span:nth-child(3n) { background: var(--forest-bright); }
+    .fanfare-burst span:nth-child(4n) { background: var(--bone); width: 5px; height: 11px; }
+    @keyframes fly-to-first {
+      0% { opacity: 0; transform: translateY(72px) scale(.76) rotate(-2deg); filter: brightness(1); }
+      58% { opacity: 1; transform: translateY(-8px) scale(1.16) rotate(1deg); filter: brightness(1.35); }
+      78% { transform: translateY(3px) scale(.98); filter: brightness(1.18); }
+      100% { opacity: 1; transform: translateY(0) scale(1); filter: brightness(1); }
+    }
+    @keyframes crown-pop {
+      0% { transform: scale(.5); }
+      65% { transform: scale(1.45); }
+      100% { transform: scale(1); }
+    }
+    @keyframes spark-burst {
+      0% { opacity: 0; transform: translate(-50%,-50%) scale(.25) rotate(0); }
+      16% { opacity: 1; }
+      100% { opacity: 0; transform: translate(calc(-50% + var(--tx)), calc(-50% + var(--ty))) scale(1.1) rotate(180deg); }
+    }
+    @keyframes leader-card-glow {
+      0% { box-shadow: inset 3px 3px 0 var(--bevel-light), inset -3px -3px 0 var(--bevel-dark), 8px 8px 0 rgba(0,0,0,.5), 0 0 0 rgba(242,193,78,0); }
+      45% { box-shadow: inset 3px 3px 0 var(--bevel-light), inset -3px -3px 0 var(--bevel-dark), 8px 8px 0 rgba(0,0,0,.5), 0 0 28px rgba(242,193,78,.55); }
+      100% { box-shadow: inset 3px 3px 0 var(--bevel-light), inset -3px -3px 0 var(--bevel-dark), 8px 8px 0 rgba(0,0,0,.5), 0 0 14px rgba(123,196,90,.32); }
+    }
     .archive-note { color: var(--forest-bright); font-size: 17px; background: rgba(123,196,90,.12); padding: 6px 10px; }
     .armory-box { max-width: 380px; margin: 0 auto; text-align: left; }
     .arm-pts { color: var(--gold); font-size: 16px; margin: 4px 0; }
