@@ -126,6 +126,7 @@ bqa ingest
 bqa build
 bqa build --sales-package
 bqa run "Test DATA-12345"
+bqa team pipeline --issue-json issue.json --issue-number 123
 bqa runtime detect
 bqa codex
 bqa claude
