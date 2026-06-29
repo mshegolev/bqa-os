@@ -10,6 +10,12 @@ bqa ingest
 bqa build
 ```
 
+For internal pilot validation, generate the Monday sales package with:
+
+```bash
+bqa build --sales-package
+```
+
 ## Inputs
 
 `bqa build` expects normalized sessions created by `bqa ingest`:
@@ -59,6 +65,31 @@ agents/runtime-agent.md
 workflows/etl-verification-workflow.md
 workflows/session-knowledge-workflow.md
 ```
+
+When `--sales-package` is enabled, `bqa build` also writes internal pilot sales
+materials into:
+
+```text
+.bqa/sales/
+```
+
+Generated sales package files:
+
+```text
+sales/pilot-offer-one-pager.md
+sales/internal-demo-script.md
+sales/discovery-call-script.md
+sales/onboarding-checklist.md
+sales/outreach-samples.md
+sales/pricing-hypothesis.md
+sales/internal-stakeholder-faq.md
+registry/sales.yaml
+```
+
+These files are for the 2-week QA Memory Pilot offer: internal validation first,
+then external paid pilot discovery. Use synthetic artifacts for public demos and
+sanitized artifacts only for customer pilots. Do not include private repo data,
+real session logs, secrets, or customer records in public outputs.
 
 ## Current extraction strategy
 

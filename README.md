@@ -124,6 +124,7 @@ bqa init
 bqa discover
 bqa ingest
 bqa build
+bqa build --sales-package
 bqa run "Test DATA-12345"
 bqa runtime detect
 bqa codex
@@ -131,6 +132,30 @@ bqa claude
 bqa opencode
 bqa doctor
 ```
+
+## 2-week QA Memory Pilot package
+
+For internal pilot validation, generate the Monday sales package alongside the
+starter QA artifacts:
+
+```bash
+bqa build --sales-package
+```
+
+The command writes the normal `.bqa/knowledge`, `.bqa/skills`, `.bqa/agents`,
+`.bqa/workflows`, and `.bqa/registry` outputs, plus `.bqa/sales/` materials:
+
+- pilot offer one-pager
+- internal demo script
+- discovery call script
+- onboarding checklist
+- sample Slack, LinkedIn, and email outreach
+- pricing hypothesis
+- internal stakeholder FAQ
+
+Use synthetic artifacts for public demos and sanitized artifacts only for pilot
+customers. Do not place private repo data, real session logs, customer records,
+or secrets in public artifacts.
 
 ## Current implementation status
 
@@ -142,6 +167,7 @@ Implemented:
 - BQA Master Agent context generation for runtime adapters
 - early one-line installer through `install.sh`
 - GitHub Pages placeholder for BQA-OS Agent Citadel
+- optional Monday sales package generation for internal pilot validation
 
 Planned:
 
