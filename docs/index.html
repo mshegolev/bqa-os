@@ -3,35 +3,77 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>BQA-OS Agent Citadel</title>
-  <link rel="stylesheet" href="styles.css">
+  <title>BQA-OS · Agent Citadel</title>
+  <meta name="description" content="BQA-OS turns raw QA session chaos into reusable knowledge artifacts, agents, and workflows. A 2-week QA Memory Pilot for QA leads.">
+  <link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
+  <link rel="stylesheet" href="assets/pixel.css">
+  <style>
+    .hero { text-align: center; padding: 26px 0 8px; }
+    .hero .lead { font-size: 22px; max-width: 640px; margin: 0 auto 20px; color: var(--parchment); }
+    .actions { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+
+    .banner {
+      margin: 26px 0; padding: 14px; text-align: center;
+      background: repeating-linear-gradient(45deg, rgba(242,193,78,.10) 0 8px, transparent 8px 16px);
+      border: var(--px) solid var(--stone-600);
+      box-shadow: inset 2px 2px 0 var(--bevel-light), inset -2px -2px 0 var(--bevel-dark);
+      font-size: 19px;
+    }
+
+    .steps { display: grid; gap: 12px; grid-template-columns: 1fr; margin-top: 6px; }
+    @media (min-width: 640px) { .steps { grid-template-columns: 1fr 1fr; } }
+    @media (min-width: 980px) { .steps { grid-template-columns: repeat(5, 1fr); } }
+    .step { background: rgba(0,0,0,.25); padding: 12px; box-shadow: inset 2px 2px 0 var(--bevel-light), inset -2px -2px 0 var(--bevel-dark); }
+    .step span { font-family: var(--font-display); font-size: 14px; color: var(--gold); display: block; }
+    .step strong { display: block; font-size: 20px; color: var(--bone); margin: 8px 0 4px; }
+    .step p { font-size: 16px; margin: 0; }
+
+    .arts { list-style: none; padding: 0; margin: 0; display: grid; gap: 8px; grid-template-columns: 1fr; }
+    @media (min-width: 560px) { .arts { grid-template-columns: 1fr 1fr; } }
+    .arts li { padding: 8px 10px; background: rgba(0,0,0,.25); font-size: 18px; box-shadow: inset 2px 2px 0 var(--bevel-dark); }
+    .arts li::before { content: "◆ "; color: var(--forest-bright); }
+
+    .who { display: grid; gap: 14px; grid-template-columns: 1fr; }
+    @media (min-width: 760px) { .who { grid-template-columns: 1fr 1fr; } }
+  </style>
 </head>
 <body>
-  <main class="page">
+  <div class="wrap">
+    <div class="topbar">
+      <div class="brand"><div class="sigil pixel"></div><b>BQA-OS</b></div>
+      <nav class="nav">
+        <a class="btn secondary" href="upload.html">Decoder</a>
+        <a class="btn secondary" href="map.html">War Map</a>
+        <a class="btn secondary" href="https://github.com/mshegolev/bqa-os">Repo</a>
+      </nav>
+    </div>
+
     <section class="hero">
-      <p class="eyebrow">BQA-OS demo</p>
-      <h1>BQA-OS Agent Citadel</h1>
-      <p class="lead">Turn raw QA session chaos into reusable knowledge artifacts, skills, agents, and workflows.</p>
+      <p class="eyebrow">BQA-OS · 2-week QA Memory Pilot</p>
+      <h1>Agent Citadel</h1>
+      <p class="lead">Turn raw QA session chaos into reusable knowledge artifacts, agents, and workflows — a QA operating system mustered from your own sessions.</p>
       <div class="actions">
-        <a href="#flow" class="button primary">Preview demo flow</a>
-        <a href="https://github.com/mshegolev/bqa-os" class="button secondary">View repo</a>
+        <a class="btn" href="upload.html">▶ Try the decoder</a>
+        <a class="btn secondary" href="map.html">See the war map</a>
       </div>
     </section>
 
-    <section id="flow" class="citadel">
-      <h2>From sessions to QA operating system</h2>
+    <div class="banner">For QA Leads &amp; QA Automation Leads in B2B SaaS, fintech &amp; data-heavy platforms. Local-first. Synthetic demo. No backend.</div>
+
+    <section class="panel">
+      <div class="panel-title">⚑ From sessions to a QA operating system</div>
       <div class="steps">
-        <article><span>01</span><strong>Session Mine</strong><p>Collect sanitized QA notes and runtime sessions.</p></article>
-        <article><span>02</span><strong>Sanitizer Gate</strong><p>Keep private data out of public artifacts.</p></article>
-        <article><span>03</span><strong>Knowledge Forge</strong><p>Create reusable QA patterns and prompts.</p></article>
-        <article><span>04</span><strong>Agent Hall</strong><p>Unlock project-specific QA agents.</p></article>
-        <article><span>05</span><strong>Workflow Command</strong><p>Package repeatable API, GraphQL, ETL, and data-quality workflows.</p></article>
+        <article class="step"><span>01</span><strong>Session Mine</strong><p>Collect sanitized QA notes and runtime sessions.</p></article>
+        <article class="step"><span>02</span><strong>Sanitizer Gate</strong><p>Keep private data out of public artifacts.</p></article>
+        <article class="step"><span>03</span><strong>Knowledge Forge</strong><p>Create reusable QA patterns and prompts.</p></article>
+        <article class="step"><span>04</span><strong>Agent Hall</strong><p>Muster project-specific QA agents.</p></article>
+        <article class="step"><span>05</span><strong>Workflow Command</strong><p>Package repeatable API, GraphQL, ETL &amp; DQ workflows.</p></article>
       </div>
     </section>
 
-    <section class="artifacts">
-      <h2>Target artifacts</h2>
-      <ul>
+    <section class="panel">
+      <div class="panel-title">◆ Target artifacts</div>
+      <ul class="arts">
         <li>etl_patterns.yaml</li>
         <li>graphql_patterns.yaml</li>
         <li>api_patterns.yaml</li>
@@ -41,6 +83,25 @@
         <li>project_profile.yaml</li>
       </ul>
     </section>
-  </main>
+
+    <section class="panel">
+      <div class="panel-title">♛ Start a pilot in 60 seconds</div>
+      <div class="who">
+        <div>
+          <h3>What you bring</h3>
+          <p>Sanitized QA sessions, logs, and notes — synthetic or marked. Nothing private leaves your machine in the demo.</p>
+        </div>
+        <div>
+          <h3>What you get</h3>
+          <p>Generated agents, workflows, knowledge specs and recommendations — downloadable as a single output bundle.</p>
+        </div>
+      </div>
+      <div class="actions" style="justify-content:flex-start;margin-top:14px">
+        <a class="btn" href="upload.html">▶ Launch the decoder</a>
+      </div>
+    </section>
+
+    <footer class="foot">BQA-OS · synthetic demo · forged in pixels</footer>
+  </div>
 </body>
 </html>

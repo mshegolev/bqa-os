@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>BQA-OS · Agent War Map</title>
+  <meta name="description" content="A pixel-art RTS map of the BQA-OS QA team advancing tasks through workflow territories. Static, synthetic, no backend.">
+  <link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
+  <link rel="stylesheet" href="assets/pixel.css">
+  <style>
+    .hud { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 18px; }
+    .hud .chip.turn { background: var(--forest-bright); }
+
+    .layout { display: grid; gap: 22px; grid-template-columns: 1fr; }
+    @media (min-width: 900px) { .layout { grid-template-columns: 1fr 280px; align-items: start; } }
+
+    .board {
+      display: flex; gap: 10px; overflow-x: auto; padding: 6px 4px 16px;
+      scroll-snap-type: x proximity;
+    }
+    .territory {
+      flex: 0 0 168px; scroll-snap-align: start;
+      background: linear-gradient(180deg, rgba(74,122,58,.12), rgba(0,0,0,.25));
+      border: var(--px) solid var(--stone-900);
+      box-shadow: inset 2px 2px 0 var(--bevel-light), inset -2px -2px 0 var(--bevel-dark);
+      min-height: 260px; display: flex; flex-direction: column;
+    }
+    .terr-head {
+      display: flex; align-items: center; gap: 6px; padding: 8px;
+      background: rgba(0,0,0,.35); border-bottom: 2px solid var(--stone-900);
+    }
+    .terr-glyph { color: var(--gold); }
+    .terr-name { font-family: var(--font-display); font-size: 8px; color: var(--bone); flex: 1; }
+    .terr-count { font-family: var(--font-display); font-size: 8px; color: var(--stone-900); background: var(--parchment-dim); padding: 3px 5px; }
+    .yard { padding: 8px; display: flex; flex-direction: column; gap: 8px; }
+    .terr-empty { color: var(--stone-500); font-size: 16px; text-align: center; margin: 12px 0; }
+
+    .token {
+      display: flex; gap: 8px; align-items: center; text-align: left;
+      background: rgba(0,0,0,.28); border: none; cursor: pointer; padding: 6px; width: 100%;
+      box-shadow: inset 2px 2px 0 var(--bevel-light), inset -2px -2px 0 var(--bevel-dark);
+      transition: transform .05s steps(1);
+    }
+    .token:hover { transform: translate(-2px,-2px); box-shadow: inset 2px 2px 0 var(--bevel-light), inset -2px -2px 0 var(--bevel-dark), 3px 3px 0 var(--bevel-dark); }
+    .token-port {
+      width: 30px; height: 30px; flex: 0 0 30px; display: grid; place-items: center; font-size: 16px;
+      color: var(--stone-900);
+      background: linear-gradient(180deg, var(--unit, var(--gold)), rgba(0,0,0,.5));
+      box-shadow: inset -2px -2px 0 var(--bevel-dark), inset 2px 2px 0 rgba(255,255,255,.3);
+    }
+    .token-meta { min-width: 0; }
+    .token-meta b { font-family: var(--font-display); font-size: 8px; color: var(--gold); display: block; }
+    .token-meta small { font-size: 15px; color: var(--parchment-dim); display: block; line-height: 1.1; }
+    .token.is-done { opacity: .7; }
+    .token.is-done .token-port { background: linear-gradient(180deg, var(--stone-500), rgba(0,0,0,.6)); }
+    .token.is-bug { animation: shake .5s steps(2) infinite; }
+    @keyframes shake { 0%,100%{ transform: translateX(0);} 50%{ transform: translateX(-2px);} }
+
+    .rost-row { display: flex; gap: 8px; align-items: center; padding: 8px 0; border-bottom: 2px solid rgba(0,0,0,.3); }
+    .rost-port { width: 30px; height: 30px; flex: 0 0 30px; display: grid; place-items: center; font-size: 16px; color: var(--stone-900);
+      background: linear-gradient(180deg, var(--unit, var(--gold)), rgba(0,0,0,.5)); box-shadow: inset -2px -2px 0 var(--bevel-dark), inset 2px 2px 0 rgba(255,255,255,.3); }
+    .rost-body { flex: 1; min-width: 0; }
+    .rost-body b { font-family: var(--font-display); font-size: 8px; color: var(--bone); display: block; margin-bottom: 5px; }
+
+    #detail { min-height: 120px; }
+    #detail p { font-size: 19px; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="topbar">
+      <div class="brand"><div class="sigil pixel"></div><b>BQA-OS</b></div>
+      <nav class="nav">
+        <a class="btn secondary" href="index.html">Citadel</a>
+        <a class="btn secondary" href="upload.html">Decoder</a>
+        <a class="btn secondary" href="https://github.com/mshegolev/bqa-os">Repo</a>
+      </nav>
+    </div>
+
+    <p class="eyebrow">Demo · synthetic battlefield</p>
+    <h1>Agent War Map</h1>
+    <p>The BQA-OS QA team as units holding territory. Each task marches across workflow lands — from <em>idea</em> to <em>done</em> — carried by the role that owns its stage. Press <strong>Advance turn</strong> to watch the front move.</p>
+
+    <div class="hud">
+      <span class="chip turn">Turn <span id="turn">1</span></span>
+      <button class="btn" id="advance">▶ Advance turn</button>
+      <button class="btn secondary" id="reset">⟲ Reset</button>
+    </div>
+
+    <div class="layout">
+      <section class="panel">
+        <div class="panel-title">⚔ Front line</div>
+        <div class="board" id="board"></div>
+        <p class="muted" style="font-size:16px">Tap a unit to read its order. Synthetic data only — no real issues are touched.</p>
+      </section>
+
+      <div>
+        <section class="panel">
+          <div class="panel-title">♛ War council</div>
+          <div id="roster"></div>
+        </section>
+        <section class="panel" id="detail">
+          <div class="panel-title">⚑ Order</div>
+          <p class="muted">Select a unit on the map.</p>
+        </section>
+      </div>
+    </div>
+
+    <footer class="foot">BQA-OS · synthetic demo · hold the line</footer>
+  </div>
+
+  <script src="assets/map.js"></script>
+</body>
+</html>
