@@ -132,6 +132,7 @@ function drawHuman(a) {
   px(cx + 6, cy - 21, 1, 10, "#dfe6ee"); px(cx + 5, cy - 12, 3, 1, "#8a6a3a");
   ctx.fillStyle = a.color; ctx.font = "8px monospace"; ctx.textAlign = "center"; ctx.fillText(a.glyph, cx, cy - 25);
   bar(cx - 10, cy - 33, 20, a.hp / a.maxhp, PAL.forestBright);
+  if (a.drift > 0) { ctx.fillStyle = "#c79bff"; ctx.font = "10px monospace"; ctx.textAlign = "center"; ctx.fillText("≈", cx, cy - 36); px(cx - 6, cy - 28, 12, 1, "#8e6fc4"); }
   if (G.selected === a) { ctx.strokeStyle = "#7bff5a"; ctx.lineWidth = 1.5; ctx.strokeRect(cx - 9, cy - 26, 18, 30); }
 }
 // Orc threat — green, scaled by type size; boss = warlord.
@@ -255,6 +256,21 @@ function updateProjectiles(dt) {
 }
 function drawProjectiles() { for (const p of G.projectiles) { px(p.px - 1, p.py - 1, 3, 3, "#14110d"); px(p.px - 1, p.py - 1, 2, 2, p.color); } }
 
+/* Model Drift: a CVE Shaman hexes the nearest agents so they miss for 3s. */
+function castDrift(e) {
+  const sorted = G.units.slice().sort((a, b) => Math.hypot(a.px - e.px, a.py - e.py) - Math.hypot(b.px - e.px, b.py - e.py));
+  const n = Math.min(3, sorted.length);
+  for (let i = 0; i < n; i++) sorted[i].drift = 3;
+  if (n) logMsg("CVE Shaman casts Model Drift — " + n + " agent" + (n === 1 ? "" : "s") + " miss for 3s.", "high");
+  sfx("kill");
+}
+/* Clear Context: the player's counter-spell — purge drift from all agents. */
+function clearContext() {
+  let n = 0; for (const a of G.units) if (a.drift > 0) { a.drift = 0; n++; }
+  logMsg("Clear Context — drift purged from " + n + " agent" + (n === 1 ? "" : "s") + ".");
+  sfx("win");
+}
+
 function update(dt) {
   G.dt = dt;
   if (G.state !== "playing") return;
@@ -273,15 +289,16 @@ function update(dt) {
   // units behave by job; everyone defends if a threat is close
   for (const a of G.units) {
     if (a.hp <= 0) continue;
+    if (a.drift > 0) a.drift -= dt;             // Model Drift wears off
+    const drifting = a.drift > 0;               // while drifted, attacks miss
     const threat = pickThreat(a, a.job === "defend" ? 1e9 : 260);
     if (threat) {
       const dist = Math.hypot(threat.px - a.px, threat.py - a.py);
       if (a.ranged && dist <= (a.range || 130)) {
         a.cd = (a.cd || 0) - dt;
-        if (a.cd <= 0) { shoot(a, threat, (a.dmg || 20) + G.skills.attack * 8, "#eaf3ff", false); a.cd = 0.8; }
+        if (a.cd <= 0) { if (!drifting) shoot(a, threat, (a.dmg || 20) + G.skills.attack * 8, "#eaf3ff", false); a.cd = 0.8; }
       } else if (moveToward(a, threat.tx, threat.ty, 1.8)) {
-        threat.hp -= (36 + G.skills.attack * 12) * dt;
-        if (threat.hp <= 0) killEnemy(threat);
+        if (!drifting) { threat.hp -= (36 + G.skills.attack * 12) * dt; if (threat.hp <= 0) killEnemy(threat); }
       }
       continue;
     }
@@ -301,6 +318,12 @@ function update(dt) {
 
   // enemies march on the castle (ranged ones stop and pelt it / nearby units)
   for (const e of G.enemies) {
+    if (e.cve && !e.boss) {                      // CVE Shaman — caster of Model Drift
+      e.castCd = (e.castCd == null ? 4 : e.castCd) - dt;
+      if (e.castCd <= 0 && G.units.length) { castDrift(e); e.castCd = 7; }
+      moveToward(e, G.castle.tx, G.castle.ty, e.speed * 0.7);
+      continue;
+    }
     if (e.ranged) {
       const tgt = nearestUnit(e);
       const aimX = tgt ? tgt.px : isoX(G.castle.tx, G.castle.ty);
@@ -449,6 +472,7 @@ const ECONOMY = {
   },
   mcp: { logs: 12, hardening: 8 },
   skill: { attack: { features: 10, hardening: 10 }, gather: { prompts: 10, logs: 6 } },
+  spell: { clear_context: { logs: 5, prompts: 5 } },
 };
 const RES_ICON = { features: "★", prompts: "✦", hardening: "⛨", logs: "≋" };
 const COMMANDS = [
@@ -460,6 +484,7 @@ const COMMANDS = [
   { id: "mcp", label: "MCP relay", glyph: "⛁", kind: "mcp" },
   { id: "attack", label: "+Attack", glyph: "⚒", kind: "skill" },
   { id: "gather", label: "+Gather", glyph: "⛏", kind: "skill" },
+  { id: "clear_context", label: "Clear Context", glyph: "✺", kind: "spell" },
 ];
 // Costs rise the more you already have, so growth is steady, never trivial,
 // and the challenge scales proportionally with your army.
@@ -470,6 +495,7 @@ function costFor(c) {
     return out;
   }
   if (c.kind === "mcp") { const n = G.mcps.length, out = {}; for (const k in ECONOMY.mcp) out[k] = Math.round(ECONOMY.mcp[k] * (1 + 0.35 * n)); return out; }
+  if (c.kind === "spell") return ECONOMY.spell[c.id];
   const base = ECONOMY.skill[c.id], lvl = G.skills[c.id], out = {};
   for (const k in base) out[k] = base[k] * (lvl + 1);
   return out;
@@ -490,6 +516,7 @@ function doCommand(c) {
   spend(cost); sfx("command");
   if (c.kind === "recruit") { spawnUnit(c.id); logMsg("Recruited " + UNIT_TYPES[c.id].label + "."); }
   else if (c.kind === "mcp") addMCP();
+  else if (c.kind === "spell") { if (c.id === "clear_context") clearContext(); }
   else { G.skills[c.id]++; logMsg("Upgraded " + c.label + " to L" + G.skills[c.id] + "."); }
 }
 function buildCommands() {
