@@ -1,0 +1,8 @@
+{
+  "_comment": "Official CITADEL survival leaderboard — git-tracked top 3, shown on launch. New record-holders are promoted here by a maintainer/CI commit.",
+  "top": [
+    { "name": "Sir Buildsworth", "waves": 12 },
+    { "name": "Lady Hardena", "waves": 9 },
+    { "name": "Prompt-Smith Vee", "waves": 7 }
+  ]
+}

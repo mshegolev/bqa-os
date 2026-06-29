@@ -41,6 +41,8 @@ const G = {
   selected: null,
   clock: 0, demoIdx: 0, done: false, grace: 9,
   warlordSeen: false, warlordDead: false,
+  mode: "demo",            // demo | survival
+  wave: 0, waveGap: 0, wavesSurvived: 0, recorded: false,
   dt: 0, last: 0,
 };
 
@@ -152,6 +154,7 @@ function render() {
   for (const e of G.enemies) sp.push({ d: e.tx + e.ty + 0.5, y: e.py, f: () => drawOrc(e) });
   sp.sort((p, q) => (p.d - q.d) || ((p.y || 0) - (q.y || 0)));
   for (const s of sp) s.f();
+  drawMinimap();
 }
 
 /* ---- spawning -------------------------------------------- */
@@ -166,7 +169,7 @@ function spawnUnit(type) {
   const d = UNIT_TYPES[type]; if (!d) return;
   const tx = clamp(G.castle.tx + (G.units.length % 3) - 1, 1, GW - 2);
   const ty = clamp(G.castle.ty + 1 + (G.units.length % 2), 1, GH - 2);
-  const u = { type, ...d, hp: 100, maxhp: 100, tx, ty, px: isoX(tx, ty), py: isoY(tx, ty), target: null };
+  const u = { type, ...d, hp: 120, maxhp: 120, tx, ty, px: isoX(tx, ty), py: isoY(tx, ty), target: null };
   G.units.push(u);
   return u;
 }
@@ -214,9 +217,15 @@ function update(dt) {
   if (G.state !== "playing") return;
   G.clock += dt;
 
-  // play demo logs by timestamp
-  while (G.demoIdx < DEMO_LOGS.length && DEMO_LOGS[G.demoIdx].t <= G.clock) applyLog(DEMO_LOGS[G.demoIdx++]);
-  if (G.demoIdx >= DEMO_LOGS.length) G.done = true;
+  if (G.mode === "demo") {
+    // play demo logs by timestamp
+    while (G.demoIdx < DEMO_LOGS.length && DEMO_LOGS[G.demoIdx].t <= G.clock) applyLog(DEMO_LOGS[G.demoIdx++]);
+    if (G.demoIdx >= DEMO_LOGS.length) G.done = true;
+  } else {
+    // survival: endless escalating waves; clear one to face the next
+    G.waveGap -= dt;
+    if (!G.enemies.length && G.waveGap <= 0) spawnSurvivalWave();
+  }
 
   // units behave by job; everyone defends if a threat is close
   for (const a of G.units) {
@@ -261,6 +270,7 @@ function killEnemy(e) {
   G.res.trust = clamp(G.res.trust + e.trust, 0, 100);
   if (e.boss) G.warlordDead = true;
   logMsg("Slain: " + e.label + " (+%" + e.trust + " trust)");
+  sfx("kill");
 }
 function evaluateEnd(dt) {
   if (G.state !== "playing") return;
@@ -278,11 +288,98 @@ function evaluateEnd(dt) {
     }
   }
 }
+/* ---- survival mode --------------------------------------- */
+const sfx = (n) => { try { if (window.AUDIO) window.AUDIO.play(n); } catch (_) {} };
+function spawnSurvivalWave() {
+  if (G.wave > 0) G.wavesSurvived = G.wave;        // previous wave cleared
+  G.wave++;
+  const w = G.wave;
+  const grunts = 1 + Math.floor(w * 0.6);
+  for (let i = 0; i < grunts; i++) spawnEnemy(i % 4 === 3 ? "regression_raider" : "bug_grunt");
+  if (w >= 3) spawnEnemy("cve_shaman");
+  if (w >= 4 && w % 2 === 0) spawnEnemy("incident_ogre");
+  if (w >= 6 && w % 3 === 0) spawnEnemy("tech_debt_troll");
+  if (w >= 8 && w % 4 === 0) spawnEnemy("deadline_warlord");
+  // reinforcements: the agent army grows each wave
+  const reinforce = ["incident_defender", "feature_worker", "hardening_engineer", "prompt_smith", "context_logger"];
+  spawnUnit(reinforce[(w - 1) % reinforce.length]);
+  G.phase = Math.min(PHASES.length - 1, Math.floor(w / 2));
+  G.waveGap = 2.5;
+  logMsg("Wave " + w + " — the horde advances.", w % 5 === 0 ? "high" : undefined);
+  sfx("wave");
+}
+
+/* ---- leaderboard ----------------------------------------- */
+// Official top-3 is git-tracked in docs/leaderboard.json and shown on launch.
+// Personal bests live in localStorage. A new record that beats the official
+// board is flagged for a maintainer/CI to commit into leaderboard.json.
+const LB_KEY = "bqa-citadel-scores";
+const OFFICIAL_DEFAULT = [
+  { name: "Sir Buildsworth", waves: 12 }, { name: "Lady Hardena", waves: 9 }, { name: "Prompt-Smith Vee", waves: 7 },
+];
+G.official = OFFICIAL_DEFAULT.slice();
+function loadOfficial() {
+  try {
+    fetch("leaderboard.json").then((r) => r.json()).then((d) => {
+      if (d && Array.isArray(d.top)) { G.official = d.top.slice(0, 3); renderLeaderboard(document.getElementById("lb-start")); }
+    }).catch(() => {});
+  } catch (_) {}
+}
+function getScores() { try { return JSON.parse(localStorage.getItem(LB_KEY) || "[]"); } catch (_) { return []; } }
+function recordScore(waves) {
+  let name = "You";
+  const beatsOfficial = waves > 0 && (G.official.length < 3 || waves > G.official[G.official.length - 1].waves);
+  try {
+    if (typeof window !== "undefined" && window.prompt) {
+      const n = window.prompt((beatsOfficial ? "New top-3! " : "") + "You survived " + waves + " waves. Enter your name:", "");
+      if (n) name = n.slice(0, 24);
+    }
+  } catch (_) {}
+  try {
+    const s = getScores();
+    s.push({ name, waves, ts: new Date().toISOString().slice(0, 10) });
+    s.sort((a, b) => b.waves - a.waves);
+    localStorage.setItem(LB_KEY, JSON.stringify(s.slice(0, 10)));
+  } catch (_) {}
+  G.lastRecord = { name, waves, beatsOfficial };
+}
+function renderLeaderboard(box) {
+  if (!box) return;
+  box.replaceChildren();
+  (G.official || []).slice(0, 3).forEach((r, i) => {
+    const row = el("div", "lb-row");
+    row.appendChild(el("span", "lb-rank", ["🥇", "🥈", "🥉"][i] || ("#" + (i + 1))));
+    row.appendChild(el("span", "lb-waves", (r.name || "—") + " — " + r.waves + " waves"));
+    box.appendChild(row);
+  });
+  const mine = getScores()[0];
+  if (mine) { const r = el("div", "lb-row"); r.appendChild(el("span", "lb-rank", "you")); r.appendChild(el("span", "lb-waves", "Your best: " + mine.waves + " waves")); box.appendChild(r); }
+}
+
+/* ---- minimap --------------------------------------------- */
+function drawMinimap() {
+  const mc = document.getElementById("minimap"); if (!mc) return;
+  const m = mc.getContext("2d"); const W = mc.width, H = mc.height;
+  const cw = W / GW, ch = H / GH;
+  for (let ty = 0; ty < GH; ty++) for (let tx = 0; tx < GW; tx++) {
+    const t = terrainAt(tx, ty);
+    m.fillStyle = t === "w" ? "#2f6090" : t === "f" ? "#244a1e" : t === "r" ? "#8a6a3a" : "#4a7a3a";
+    m.fillRect(tx * cw, ty * ch, Math.ceil(cw), Math.ceil(ch));
+  }
+  m.fillStyle = "#f2c14e"; m.fillRect(G.castle.tx * cw - 1, G.castle.ty * ch - 1, cw + 2, ch + 2);
+  m.fillStyle = "#7bc45a"; for (const a of G.units) m.fillRect(a.tx * cw, a.ty * ch, cw, ch);
+  m.fillStyle = "#c0392b"; for (const e of G.enemies) m.fillRect(e.tx * cw, e.ty * ch, cw, ch);
+}
+
 function loop(ts) {
   if (!G.last) G.last = ts;
   const dt = Math.min(0.05, (ts - G.last) / 1000); G.last = ts;
   update(dt); render();
-  if (G.state === "won" || G.state === "lost") return showModal();
+  if (G.state === "won" || G.state === "lost") {
+    if (G.mode === "survival" && !G.recorded) { if (G.state === "lost") recordScore(G.wavesSurvived); G.recorded = true; }
+    sfx(G.state === "won" ? "win" : "lose");
+    return showModal();
+  }
   requestAnimationFrame(loop);
 }
 
@@ -295,6 +392,7 @@ function syncPanels() {
   const tr = $("#r-trust"); tr.textContent = Math.round(G.res.trust) + "%";
   tr.style.color = G.res.trust >= 70 ? PAL.forestBright : G.res.trust < 40 ? PAL.blood : PAL.gold;
   $("#c-hp").textContent = Math.max(0, Math.round(G.castle.hp)) + "%";
+  const wv = document.getElementById("r-wave"); if (wv) wv.textContent = G.mode === "survival" ? String(G.wave) : "—";
   // timeline
   const tl = $("#timeline"); tl.replaceChildren();
   PHASES.forEach((p, i) => tl.appendChild(el("span", "phase" + (i <= G.phase ? " on" : ""), p.key)));
@@ -321,16 +419,26 @@ function showModal() {
   render();
   const m = $("#modal"); m.style.display = "grid"; m.replaceChildren();
   const card = el("div", "modal-card");
-  card.appendChild(el("h2", null, G.state === "won" ? "RELEASE SHIPPED" : "PROJECT LOST"));
-  card.appendChild(el("p", null, G.result || ""));
+  const survival = G.mode === "survival";
+  card.appendChild(el("h2", null, survival ? "THE CITADEL FALLS" : (G.state === "won" ? "RELEASE SHIPPED" : "PROJECT LOST")));
+  card.appendChild(el("p", null, survival ? ("You outlasted " + G.wavesSurvived + " wave" + (G.wavesSurvived === 1 ? "" : "s") + ".") : (G.result || "")));
   const stats = el("ul", "stats");
-  stats.appendChild(el("li", null, "Features delivered: " + Math.floor(G.res.features)));
-  stats.appendChild(el("li", null, "Prompts hardened: " + Math.floor(G.res.prompts)));
-  stats.appendChild(el("li", null, "Hardening laid: " + Math.floor(G.res.hardening)));
-  stats.appendChild(el("li", null, "Threats remaining: " + G.enemies.length));
-  stats.appendChild(el("li", null, "Final Trust: " + Math.round(G.res.trust) + "%  ·  Citadel " + Math.max(0, Math.round(G.castle.hp)) + "%"));
+  if (survival) {
+    stats.appendChild(el("li", null, "Waves survived: " + G.wavesSurvived));
+    stats.appendChild(el("li", null, "Reached wave: " + G.wave));
+    stats.appendChild(el("li", null, "Final Trust: " + Math.round(G.res.trust) + "%"));
+  } else {
+    stats.appendChild(el("li", null, "Features delivered: " + Math.floor(G.res.features)));
+    stats.appendChild(el("li", null, "Prompts hardened: " + Math.floor(G.res.prompts)));
+    stats.appendChild(el("li", null, "Hardening laid: " + Math.floor(G.res.hardening)));
+    stats.appendChild(el("li", null, "Final Trust: " + Math.round(G.res.trust) + "%  ·  Citadel " + Math.max(0, Math.round(G.castle.hp)) + "%"));
+  }
   card.appendChild(stats);
-  const btn = el("button", "btn", "⟲ Run again"); btn.addEventListener("click", () => location.reload());
+  if (survival) {
+    if (G.lastRecord && G.lastRecord.beatsOfficial) card.appendChild(el("p", "newtop", "🏆 New official top-3 — " + G.lastRecord.name + ", " + G.lastRecord.waves + " waves! It will be committed to the git leaderboard."));
+    card.appendChild(el("div", "panel-title", "★ Official leaderboard")); const lb = el("div", "lb"); renderLeaderboard(lb); card.appendChild(lb);
+  }
+  const btn = el("button", "btn", "⟲ Play again"); btn.addEventListener("click", () => location.reload());
   card.appendChild(btn); m.appendChild(card);
 }
 
@@ -341,6 +449,7 @@ function onClick(e) {
   let hit = null, hd = 18;
   for (const a of G.units) { const d = Math.hypot(a.px - sx, a.py - sy); if (d < hd) { hd = d; hit = a; } }
   G.selected = hit;
+  if (hit) sfx("select:" + hit.type);
   const ins = $("#inspect"); ins.replaceChildren(el("div", "panel-title", "⚑ Inspect"));
   if (hit) {
     const b = el("p"); const n = el("b", null, hit.label); n.style.color = hit.color; b.appendChild(n); ins.appendChild(b);
@@ -351,19 +460,32 @@ function onClick(e) {
 
 /* ---- boot ------------------------------------------------ */
 function resize() { const w = canvas.clientWidth; canvas.width = w; canvas.height = Math.round(w * 0.6); ORIGIN_X = canvas.width / 2; ORIGIN_Y = 56; }
-function startDemo(seedArchive) {
-  placeNodes();
-  // seed a builder + any agents implied by a decoded archive's domains
+function seedAgents(seedArchive) {
   spawnUnit("builder");
   if (seedArchive && Array.isArray(seedArchive.sessions)) {
     const map = { etl: "feature_worker", api: "hardening_engineer", graphql: "prompt_smith", data_quality: "hardening_engineer", bugs: "incident_defender", prompts: "prompt_smith" };
     const seen = new Set();
     for (const s of seedArchive.sessions) { const u = map[String(s.domain || "").toLowerCase()]; if (u && !seen.has(u)) { seen.add(u); spawnUnit(u); } }
   }
+}
+function begin() {
   G.state = "playing"; G.clock = 0; G.demoIdx = 0; G.last = 0;
   $("#start").style.display = "none";
-  logMsg("Builder Agent raised the first wall of architecture.");
+  try { if (window.AUDIO) window.AUDIO.music(true); } catch (_) {}
   syncPanels(); requestAnimationFrame(loop);
+}
+function startDemo(seedArchive) {
+  G.mode = "demo"; placeNodes(); seedAgents(seedArchive);
+  logMsg("Builder Agent raised the first wall of architecture.");
+  begin();
+}
+function startSurvival(seedArchive) {
+  G.mode = "survival"; placeNodes();
+  seedAgents(seedArchive);
+  spawnUnit("incident_defender"); spawnUnit("incident_defender");
+  G.wave = 0; G.waveGap = 1.5; G.wavesSurvived = 0; G.recorded = false;
+  logMsg("Survival: hold the citadel — how many waves can you outlast?");
+  begin();
 }
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -373,4 +495,9 @@ document.addEventListener("DOMContentLoaded", () => {
   placeNodes(); render(); syncPanels();
   let archive = null; try { const s = sessionStorage.getItem("bqa-archive"); if (s) archive = JSON.parse(s); } catch (_) {}
   $("#start-demo").addEventListener("click", () => startDemo(archive));
+  const sv = document.getElementById("start-survival"); if (sv) sv.addEventListener("click", () => startSurvival(archive));
+  const mute = document.getElementById("mute");
+  if (mute) mute.addEventListener("click", () => { const on = window.AUDIO && window.AUDIO.toggle(); mute.textContent = on ? "🔊" : "🔇"; });
+  renderLeaderboard(document.getElementById("lb-start"));
+  loadOfficial();
 });
