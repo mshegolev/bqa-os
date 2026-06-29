@@ -1,0 +1,218 @@
+/* ============================================================
+   BQA-OS — 90s pixel-art RTS design system
+   Shared by the demo pages (upload flow, agent map).
+   No build step, no framework. Works opened from file://.
+   ============================================================ */
+
+@import url("https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap");
+
+:root {
+  /* Limited "strategy game" palette ------------------------- */
+  --stone-900: #14110d;
+  --stone-800: #221c14;
+  --stone-700: #322819;
+  --stone-600: #4a3c25;
+  --stone-500: #6b5733;
+  --parchment: #e9d9b0;
+  --parchment-dim: #c9b888;
+  --gold: #f2c14e;
+  --gold-deep: #b07c1e;
+  --blood: #c0392b;
+  --forest: #4a7a3a;
+  --forest-bright: #7bc45a;
+  --sky: #4a78b5;
+  --sky-bright: #6fb3e0;
+  --mana: #8e6fc4;
+  --bone: #f4eddc;
+
+  /* Faction / state accents -------------------------------- */
+  --c-owner: var(--gold);
+  --c-architect: var(--sky-bright);
+  --c-developer: var(--forest-bright);
+  --c-qa: var(--mana);
+  --c-reviewer: var(--blood);
+
+  --bevel-light: #6b5733;
+  --bevel-dark: #0c0a07;
+
+  --font-display: "Press Start 2P", monospace;
+  --font-body: "VT323", "Courier New", monospace;
+
+  --px: 4px;
+}
+
+* { box-sizing: border-box; }
+
+html { -webkit-text-size-adjust: 100%; }
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  font-family: var(--font-body);
+  font-size: 22px;
+  line-height: 1.35;
+  color: var(--parchment);
+  background-color: var(--stone-900);
+  /* Tiled checker "dither" terrain + radial vignette */
+  background-image:
+    radial-gradient(circle at 50% 0%, rgba(242,193,78,.10), transparent 60%),
+    repeating-linear-gradient(45deg, rgba(255,255,255,.018) 0 2px, transparent 2px 4px),
+    repeating-linear-gradient(-45deg, rgba(0,0,0,.22) 0 2px, transparent 2px 4px);
+  image-rendering: pixelated;
+  -webkit-font-smoothing: none;
+  font-smooth: never;
+}
+
+/* CRT scanline + flicker overlay -------------------------- */
+body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 9999;
+  background:
+    repeating-linear-gradient(0deg, rgba(0,0,0,.16) 0 1px, transparent 1px 3px),
+    radial-gradient(circle at 50% 50%, transparent 60%, rgba(0,0,0,.45) 100%);
+  mix-blend-mode: multiply;
+}
+
+img, canvas, .pixel { image-rendering: pixelated; }
+
+/* Typography ---------------------------------------------- */
+h1, h2, h3, .display {
+  font-family: var(--font-display);
+  color: var(--gold);
+  line-height: 1.5;
+  text-transform: uppercase;
+  letter-spacing: .5px;
+  text-shadow: var(--px) var(--px) 0 var(--bevel-dark);
+  margin: 0 0 .6em;
+}
+h1 { font-size: clamp(18px, 3.4vw, 30px); }
+h2 { font-size: clamp(14px, 2.2vw, 20px); }
+h3 { font-size: 12px; color: var(--parchment); }
+
+a { color: var(--gold); text-decoration: none; }
+a:hover { color: var(--bone); text-decoration: underline; }
+
+p { margin: 0 0 .8em; color: var(--parchment-dim); }
+
+.eyebrow {
+  font-family: var(--font-display);
+  font-size: 9px;
+  color: var(--forest-bright);
+  letter-spacing: 2px;
+  text-transform: uppercase;
+}
+
+/* Layout -------------------------------------------------- */
+.wrap { max-width: 1100px; margin: 0 auto; padding: 28px 18px 80px; }
+
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 22px;
+}
+.brand { display: flex; align-items: center; gap: 12px; }
+.brand .sigil {
+  width: 40px; height: 40px;
+  background:
+    conic-gradient(from 45deg, var(--gold), var(--gold-deep), var(--gold));
+  box-shadow: inset -3px -3px 0 var(--bevel-dark), inset 3px 3px 0 #ffe9a8;
+}
+.brand b { font-family: var(--font-display); font-size: 12px; color: var(--bone); }
+.nav { display: flex; gap: 6px; flex-wrap: wrap; }
+
+/* Beveled "panel" — the core RTS UI surface --------------- */
+.panel {
+  position: relative;
+  background:
+    linear-gradient(180deg, var(--stone-700), var(--stone-800));
+  border: var(--px) solid var(--stone-900);
+  box-shadow:
+    inset 3px 3px 0 var(--bevel-light),
+    inset -3px -3px 0 var(--bevel-dark),
+    6px 6px 0 rgba(0,0,0,.5);
+  padding: 18px;
+}
+.panel + .panel { margin-top: 22px; }
+.panel-title {
+  font-family: var(--font-display);
+  font-size: 11px;
+  color: var(--gold);
+  border-bottom: var(--px) solid var(--stone-600);
+  padding-bottom: 10px;
+  margin: -2px 0 14px;
+  display: flex; align-items: center; gap: 8px;
+}
+
+/* Buttons ------------------------------------------------- */
+.btn {
+  font-family: var(--font-display);
+  font-size: 10px;
+  color: var(--stone-900);
+  background: linear-gradient(180deg, var(--gold) 0%, var(--gold-deep) 100%);
+  border: none;
+  padding: 12px 16px;
+  cursor: pointer;
+  text-transform: uppercase;
+  box-shadow: inset 2px 2px 0 #ffe9a8, inset -2px -2px 0 var(--bevel-dark), 3px 3px 0 var(--bevel-dark);
+  transition: transform .04s steps(1);
+}
+.btn:hover { filter: brightness(1.08); }
+.btn:active { transform: translate(3px, 3px); box-shadow: inset 2px 2px 0 #ffe9a8, inset -2px -2px 0 var(--bevel-dark); }
+.btn.secondary {
+  color: var(--parchment);
+  background: linear-gradient(180deg, var(--stone-600), var(--stone-700));
+  box-shadow: inset 2px 2px 0 var(--bevel-light), inset -2px -2px 0 var(--bevel-dark), 3px 3px 0 var(--bevel-dark);
+}
+.btn:disabled { opacity: .45; cursor: not-allowed; transform: none; }
+
+/* Pixel chips / badges ------------------------------------ */
+.chip {
+  display: inline-block;
+  font-family: var(--font-display);
+  font-size: 8px;
+  padding: 5px 7px;
+  color: var(--stone-900);
+  background: var(--parchment-dim);
+  box-shadow: inset -2px -2px 0 rgba(0,0,0,.35);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+/* HP-style stat bar --------------------------------------- */
+.bar {
+  height: 16px;
+  background: var(--stone-900);
+  box-shadow: inset 2px 2px 0 var(--bevel-dark);
+  overflow: hidden;
+}
+.bar > span {
+  display: block; height: 100%;
+  background: repeating-linear-gradient(90deg, var(--forest-bright) 0 6px, var(--forest) 6px 8px);
+  transition: width .5s steps(12);
+}
+
+footer.foot {
+  margin-top: 40px;
+  font-size: 18px;
+  color: var(--stone-500);
+  text-align: center;
+}
+
+/* Utility ------------------------------------------------- */
+.grid { display: grid; gap: 16px; }
+.muted { color: var(--stone-500); }
+.center { text-align: center; }
+.scroll { max-height: 320px; overflow: auto; }
+::-webkit-scrollbar { width: 12px; height: 12px; }
+::-webkit-scrollbar-track { background: var(--stone-900); }
+::-webkit-scrollbar-thumb { background: var(--stone-600); box-shadow: inset 2px 2px 0 var(--bevel-light), inset -2px -2px 0 var(--bevel-dark); }
+
+@media (prefers-reduced-motion: reduce) {
+  * { animation: none !important; transition: none !important; }
+}

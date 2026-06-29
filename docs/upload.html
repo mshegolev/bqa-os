@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>BQA-OS · Archive Decoder</title>
+  <meta name="description" content="Upload a marked QA session archive, decode it locally in your browser, and download generated BQA-OS artifacts. No backend, synthetic data.">
+  <link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
+  <link rel="stylesheet" href="assets/pixel.css">
+  <style>
+    .deck { display: grid; grid-template-columns: 1fr; gap: 22px; }
+    @media (min-width: 860px) { .deck { grid-template-columns: 1.1fr 1fr; align-items: start; } }
+
+    .dropzone {
+      border: var(--px) dashed var(--stone-500);
+      background: repeating-linear-gradient(45deg, rgba(0,0,0,.18) 0 6px, transparent 6px 12px);
+      padding: 30px 18px; text-align: center; cursor: pointer;
+      transition: background .08s steps(2);
+    }
+    .dropzone .big { font-family: var(--font-display); font-size: 11px; color: var(--gold); margin-bottom: 10px; }
+    .dropzone.over { background: rgba(123,196,90,.18); border-color: var(--forest-bright); }
+    .controls { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 16px; }
+
+    #status {
+      font-size: 19px; margin-top: 14px; color: var(--parchment-dim);
+      background: var(--stone-900); padding: 8px 10px;
+      box-shadow: inset 2px 2px 0 var(--bevel-dark);
+      word-break: break-word;
+    }
+
+    .units { display: grid; grid-template-columns: 1fr; gap: 10px; }
+    @media (min-width: 520px) { .units { grid-template-columns: 1fr 1fr; } }
+    .unit { display: flex; gap: 10px; align-items: center; background: rgba(0,0,0,.22); padding: 8px; box-shadow: inset 2px 2px 0 var(--bevel-light), inset -2px -2px 0 var(--bevel-dark); }
+    .unit-portrait {
+      width: 46px; height: 46px; flex: 0 0 46px; display: grid; place-items: center;
+      background: linear-gradient(180deg, var(--unit, var(--gold)), rgba(0,0,0,.5));
+      box-shadow: inset -3px -3px 0 var(--bevel-dark), inset 3px 3px 0 rgba(255,255,255,.25);
+      font-size: 22px; color: var(--stone-900);
+    }
+    .unit-body { flex: 1; min-width: 0; }
+    .unit-body b { font-family: var(--font-display); font-size: 9px; color: var(--bone); display: block; word-break: break-all; }
+    .unit-role { font-size: 16px; color: var(--parchment-dim); margin: 2px 0 6px; }
+
+    ul.loot { list-style: none; padding: 0; margin: 0; }
+    ul.loot li { padding: 6px 4px; border-bottom: 2px solid rgba(0,0,0,.3); font-size: 19px; }
+    ul.recs { list-style: none; padding: 0; margin: 0; }
+    ul.recs li { padding: 6px 0 6px 18px; position: relative; font-size: 19px; color: var(--parchment); }
+    ul.recs li::before { content: "»"; position: absolute; left: 0; color: var(--forest-bright); }
+
+    .legend { font-size: 16px; color: var(--stone-500); margin-top: 10px; }
+    #results { display: none; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="topbar">
+      <div class="brand"><div class="sigil pixel"></div><b>BQA-OS</b></div>
+      <nav class="nav">
+        <a class="btn secondary" href="index.html">Citadel</a>
+        <a class="btn secondary" href="map.html">War Map</a>
+        <a class="btn secondary" href="https://github.com/mshegolev/bqa-os">Repo</a>
+      </nav>
+    </div>
+
+    <p class="eyebrow">Demo · runs entirely in your browser</p>
+    <h1>Archive Decoder</h1>
+    <p>Drop a marked QA session archive. It is parsed <strong>locally</strong> — nothing is uploaded — and decoded into agents, workflows, knowledge specs and recommendations. Then claim your generated output as a <strong>.zip</strong>.</p>
+
+    <div class="deck">
+      <section class="panel">
+        <div class="panel-title">◆ Intake</div>
+        <div class="dropzone" id="drop">
+          <div class="big">⇪ DROP ARCHIVE</div>
+          <p>a <code>.json</code> session archive — or use the demo data</p>
+          <input type="file" id="file" accept=".json,application/json" hidden>
+        </div>
+        <div class="controls">
+          <button class="btn" id="pick">Choose file</button>
+          <button class="btn secondary" id="demo">Load demo archive</button>
+        </div>
+        <div id="status" role="status" aria-live="polite">&gt; awaiting archive.</div>
+        <p class="legend">Synthetic data only. No real session logs, no secrets, no customer data leave this page.</p>
+      </section>
+
+      <section class="panel" id="empty">
+        <div class="panel-title">⚑ Briefing</div>
+        <p>The decoder mirrors the BQA-OS pipeline:</p>
+        <ul class="recs">
+          <li>Session Mine — read sanitized QA sessions</li>
+          <li>Knowledge Forge — extract reusable QA patterns</li>
+          <li>Agent Hall — muster domain QA agents</li>
+          <li>Workflow Command — package repeatable workflows</li>
+        </ul>
+        <p class="legend">Load the demo archive to muster your team. →</p>
+      </section>
+
+      <section id="results">
+        <section class="panel">
+          <div class="panel-title">⚔ Mustered agents <span class="chip">from <span id="source-name">—</span></span></div>
+          <div class="units" id="agents"></div>
+        </section>
+
+        <section class="panel">
+          <div class="panel-title">⚑ Workflows</div>
+          <ul class="loot" id="workflows"></ul>
+        </section>
+
+        <section class="panel">
+          <div class="panel-title">◆ Knowledge specs</div>
+          <ul class="loot" id="specs"></ul>
+        </section>
+
+        <section class="panel">
+          <div class="panel-title">✦ Recommendations</div>
+          <ul class="recs" id="recs"></ul>
+          <div class="controls">
+            <button class="btn" id="download" disabled>⬇ Download output.zip</button>
+          </div>
+        </section>
+      </section>
+    </div>
+
+    <footer class="foot">BQA-OS · synthetic demo · pixels forged client-side</footer>
+  </div>
+
+  <script src="assets/upload.js"></script>
+</body>
+</html>

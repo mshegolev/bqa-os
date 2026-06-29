@@ -1,0 +1,50 @@
+{
+  "archive": "bqa-demo-archive",
+  "version": 1,
+  "generated_by": "synthetic-fixture",
+  "note": "Synthetic data only. No real session logs, no secrets, no customer data.",
+  "sessions": [
+    {
+      "id": "s-0001",
+      "tool": "claude",
+      "domain": "etl",
+      "title": "Airflow DAG reconciliation review",
+      "text": "Investigated airflow DAG failure, checked spark job row count vs hive table, reconciliation mismatch on parquet partition for etl_logs."
+    },
+    {
+      "id": "s-0002",
+      "tool": "codex",
+      "domain": "graphql",
+      "title": "GraphQL contract regression",
+      "text": "GraphQL query resolver returned null for nested field, added contract test for graphql schema, verified mutation payload."
+    },
+    {
+      "id": "s-0003",
+      "tool": "claude",
+      "domain": "api",
+      "title": "REST endpoint status codes",
+      "text": "REST api endpoint returned wrong http status code, added contract test for openapi request payload, validated 200/422 paths."
+    },
+    {
+      "id": "s-0004",
+      "tool": "opencode",
+      "domain": "data_quality",
+      "title": "Schema drift + null checks",
+      "text": "Data quality check found schema drift and null check failures, added duplicate check and checksum on row count."
+    },
+    {
+      "id": "s-0005",
+      "tool": "claude",
+      "domain": "bugs",
+      "title": "Flaky pipeline traceback",
+      "text": "Traceback exception in nightly run, flaky regression failure, isolated panic in retry handler."
+    },
+    {
+      "id": "s-0006",
+      "tool": "codex",
+      "domain": "prompts",
+      "title": "Reusable QA task prompt",
+      "text": "Your task: analyze this repository, act as QA lead, implement reconciliation check. Read .bqa knowledge first."
+    }
+  ]
+}
