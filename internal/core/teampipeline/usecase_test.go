@@ -18,10 +18,10 @@ func (f fakeIssueSource) LoadTeamIssue(ctx context.Context, ref ports.TeamIssueR
 }
 
 func TestUseCaseRoutesReadyQAStateToQAVerification(t *testing.T) {
-	issue := teamIssueWithLabels(75, "Ready QA task", "bqa:ready-qa")
+	issue := teamIssueWithLabels(27, "Ready QA task", "bqa:arch-approved", "bqa:ready-qa", "bqa:codex-team")
 	uc := UseCase{IssueSource: fakeIssueSource{issue: issue}}
 
-	plan, err := uc.Run(context.Background(), ports.TeamIssueRef{Repo: "mshegolev/bqa-os", Number: 75}, Options{})
+	plan, err := uc.Run(context.Background(), ports.TeamIssueRef{Repo: "mshegolev/bqa-os", Number: 27}, Options{})
 	if err != nil {
 		t.Fatalf("Run returned error: %v", err)
 	}
