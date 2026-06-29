@@ -11,12 +11,12 @@
     .steps3 { display: grid; gap: 10px; grid-template-columns: 1fr; margin: 8px 0 18px; }
     @media (min-width: 720px) { .steps3 { grid-template-columns: repeat(3, 1fr); } }
     .step3 { background: rgba(0,0,0,.25); padding: 12px; box-shadow: inset 2px 2px 0 var(--bevel-light), inset -2px -2px 0 var(--bevel-dark); }
-    .step3 b { font-family: var(--font-display); font-size: 9px; color: var(--gold); display: block; margin-bottom: 6px; }
+    .step3 b { font-family: var(--font-body); font-weight:700; text-transform:uppercase; font-size: 17px; color: var(--gold); display: block; margin-bottom: 6px; }
     .step3 small { font-size: 16px; color: var(--parchment-dim); }
 
     .dropzone { border: var(--px) dashed var(--stone-500); background: repeating-linear-gradient(45deg, rgba(0,0,0,.18) 0 6px, transparent 6px 12px);
       padding: 34px 18px; text-align: center; cursor: pointer; transition: background .08s steps(2); }
-    .dropzone .big { font-family: var(--font-display); font-size: 12px; color: var(--gold); margin-bottom: 10px; }
+    .dropzone .big { font-family: var(--font-body); font-weight:700; letter-spacing:1px; font-size: 20px; color: var(--gold); margin-bottom: 10px; }
     .dropzone.over { background: rgba(123,196,90,.18); border-color: var(--forest-bright); }
     .controls { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 16px; }
     #status { font-size: 18px; margin-top: 14px; color: var(--parchment-dim); background: var(--stone-900); padding: 8px 10px; box-shadow: inset 2px 2px 0 var(--bevel-dark); word-break: break-word; }
@@ -29,7 +29,7 @@
     .unit { display: flex; gap: 10px; align-items: center; background: rgba(0,0,0,.22); padding: 8px; box-shadow: inset 2px 2px 0 var(--bevel-light), inset -2px -2px 0 var(--bevel-dark); }
     .unit-portrait { width: 44px; height: 44px; flex: 0 0 44px; display: grid; place-items: center; background: linear-gradient(180deg, var(--unit, var(--gold)), rgba(0,0,0,.5)); box-shadow: inset -3px -3px 0 var(--bevel-dark), inset 3px 3px 0 rgba(255,255,255,.25); font-size: 22px; color: var(--stone-900); }
     .unit-body { flex: 1; min-width: 0; }
-    .unit-body b { font-family: var(--font-display); font-size: 9px; color: var(--bone); display: block; word-break: break-all; }
+    .unit-body b { font-family: var(--font-body); font-weight:700; font-size: 16px; color: var(--bone); display: block; word-break: break-all; }
     .unit-role { font-size: 16px; color: var(--parchment-dim); margin: 2px 0 6px; }
     ul.loot, ul.recs { list-style: none; padding: 0; margin: 0; }
     ul.loot li { padding: 6px 4px; border-bottom: 2px solid rgba(0,0,0,.3); font-size: 18px; }
@@ -39,7 +39,7 @@
     #to-field { font-size: 11px; }
 
     details.help { margin-top: 18px; background: rgba(0,0,0,.2); padding: 8px 12px; box-shadow: inset 2px 2px 0 var(--bevel-dark); }
-    details.help summary { cursor: pointer; font-family: var(--font-display); font-size: 9px; color: var(--gold); }
+    details.help summary { cursor: pointer; font-family: var(--font-body); font-weight:700; font-size: 16px; color: var(--gold); }
     details.help pre { background: var(--stone-900); color: var(--forest-bright); padding: 12px; overflow-x: auto; font-size: 15px; }
     .domains { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0; }
   </style>

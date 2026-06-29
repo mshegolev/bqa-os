@@ -16,7 +16,7 @@
     .resbar b { color: var(--bone); }
 
     .timeline { display: flex; gap: 4px; flex-wrap: wrap; margin-bottom: 10px; }
-    .phase { font-family: var(--font-display); font-size: 7px; padding: 5px 6px; background: var(--stone-700); color: var(--stone-500); box-shadow: inset -2px -2px 0 rgba(0,0,0,.4); }
+    .phase { font-family: var(--font-body); font-weight:700; text-transform:uppercase; font-size: 14px; padding: 5px 6px; background: var(--stone-700); color: var(--stone-500); box-shadow: inset -2px -2px 0 rgba(0,0,0,.4); }
     .phase.on { background: var(--gold); color: var(--stone-900); }
 
     .stage { background: #1d2a14; padding: 8px; border: var(--px) solid var(--stone-900); box-shadow: inset 3px 3px 0 var(--bevel-light), inset -3px -3px 0 var(--bevel-dark); position: relative; }
@@ -42,6 +42,15 @@
     .lb-row { display: flex; gap: 8px; padding: 3px 0; border-bottom: 1px solid rgba(0,0,0,.25); }
     .lb-rank { color: var(--gold); width: 30px; } .lb-waves { flex: 1; color: var(--bone); } .lb-date { color: var(--stone-500); }
     .newtop { color: var(--gold); font-size: 16px; }
+    .archive-note { color: var(--forest-bright); font-size: 17px; background: rgba(123,196,90,.12); padding: 6px 10px; }
+    .armory-box { max-width: 380px; margin: 0 auto; text-align: left; }
+    .arm-pts { color: var(--gold); font-size: 16px; margin: 4px 0; }
+    .arm-row { display: flex; gap: 8px; align-items: center; width: 100%; text-align: left; border: none; cursor: pointer; margin-bottom: 6px;
+      padding: 7px; background: rgba(0,0,0,.25); color: var(--parchment); box-shadow: inset 2px 2px 0 var(--bevel-light), inset -2px -2px 0 var(--bevel-dark); }
+    .arm-row:hover:not(:disabled) { filter: brightness(1.12); } .arm-row:disabled { opacity: .42; cursor: not-allowed; }
+    .arm-g { width: 22px; height: 22px; flex: 0 0 22px; display: grid; place-items: center; color: var(--gold); }
+    .arm-body { flex: 1; min-width: 0; } .arm-body b { font-size: 15px; color: var(--bone); display: block; } .arm-body small { font-size: 13px; color: var(--parchment-dim); }
+    .arm-cost { font-size: 14px; color: var(--forest-bright); }
 
     .cmdgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(94px, 1fr)); gap: 6px; margin: 6px 0 4px; }
     .cmd { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 8px 4px; cursor: pointer; border: none;
@@ -50,7 +59,7 @@
     .cmd:hover:not(:disabled) { filter: brightness(1.12); }
     .cmd:active:not(:disabled) { box-shadow: inset 2px 2px 0 var(--bevel-dark), inset -2px -2px 0 var(--bevel-light); }
     .cmd:disabled { opacity: .42; cursor: not-allowed; }
-    .cmd-g { font-size: 16px; color: var(--gold); } .cmd-l { font-size: 12px; } .cmd-cost { font-family: var(--font-display); font-size: 7px; color: var(--forest-bright); }
+    .cmd-g { font-size: 16px; color: var(--gold); } .cmd-l { font-size: 15px; } .cmd-cost { font-family: var(--font-body); font-size: 13px; color: var(--forest-bright); }
 
     #stage:fullscreen { display: grid; place-content: center; background: #14110d; padding: 0; width: 100vw; height: 100vh; }
     #stage:fullscreen canvas#field { height: 94vh; width: auto; }
@@ -90,16 +99,21 @@
           <canvas id="field"></canvas>
           <div class="start" id="start">
             <h2>Battle for the Release</h2>
+            <p id="archive-note" class="archive-note" style="display:none">✓ Your uploaded agents are mustered — bigger army &amp; <b>+25% points</b>.</p>
             <p>Two ways to play:</p>
             <div class="row" style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
               <button class="btn" id="start-demo">▶ Story Demo</button>
               <button class="btn" id="start-survival">⚔ Survival — endless waves</button>
             </div>
+            <div class="armory-box">
+              <div class="panel-title" style="margin-top:10px">⚒ Armory — spend points</div>
+              <div class="armory" id="upgrades-start"></div>
+            </div>
             <div class="lb-box">
               <div class="panel-title" style="margin-top:10px">★ Leaderboard — waves survived</div>
               <div class="lb" id="lb-start"></div>
             </div>
-            <p class="hint">Decode an archive on the Decoder first to seed your own agents.</p>
+            <p class="hint"><a href="index.html">Upload your own agents/prompts/logs</a> to field a stronger army and earn more points.</p>
           </div>
         </div>
         <div class="panel-title" style="margin-top:12px">⚒ Command — spend resources to reinforce</div>
