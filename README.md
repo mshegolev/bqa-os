@@ -6,10 +6,10 @@ BQA-OS is designed to connect QA knowledge, agents, skills, workflows, guardrail
 
 ## Live demo
 
-**BQA-OS Agent Citadel** is a GitHub Pages demo placeholder for the upcoming visual flow:
+The GitHub Pages site is the public landing page for the 2-week QA Memory Pilot:
 
 ```text
-raw QA sessions → sanitized knowledge → skills → agents → workflows
+10-30 sanitized QA artifacts -> reusable QA memory + 3-5 workflows
 ```
 
 Live URL, after GitHub Pages is enabled for `/docs` on the `main` branch:
@@ -141,7 +141,7 @@ Implemented:
 - runtime detection for Codex, Claude Code, and OpenCode
 - BQA Master Agent context generation for runtime adapters
 - early one-line installer through `install.sh`
-- GitHub Pages placeholder for BQA-OS Agent Citadel
+- GitHub Pages landing page for the 2-week QA Memory Pilot
 
 Planned:
 

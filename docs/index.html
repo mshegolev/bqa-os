@@ -3,43 +3,215 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>BQA-OS Agent Citadel</title>
+  <meta name="description" content="BQA-OS 2-week QA Memory Pilot turns sanitized QA artifacts into reusable QA memory and AI-assisted workflows for API, GraphQL, and data-pipeline testing.">
+  <title>BQA-OS | 2-week QA Memory Pilot</title>
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-  <main class="page">
-    <section class="hero">
-      <p class="eyebrow">BQA-OS demo</p>
-      <h1>BQA-OS Agent Citadel</h1>
-      <p class="lead">Turn raw QA session chaos into reusable knowledge artifacts, skills, agents, and workflows.</p>
-      <div class="actions">
-        <a href="#flow" class="button primary">Preview demo flow</a>
-        <a href="https://github.com/mshegolev/bqa-os" class="button secondary">View repo</a>
+  <header class="site-header" aria-label="BQA-OS landing page">
+    <a class="brand" href="#top" aria-label="BQA-OS home">
+      <span class="brand-mark" aria-hidden="true">B</span>
+      <span>BQA-OS</span>
+    </a>
+    <nav class="nav" aria-label="Page sections">
+      <a href="#pilot">Pilot</a>
+      <a href="#outputs">Outputs</a>
+      <a href="#privacy">Privacy</a>
+    </nav>
+    <a class="header-cta" href="https://github.com/mshegolev/bqa-os/issues/new?title=QA%20Memory%20Audit%20request&amp;body=Please%20do%20not%20paste%20private%20QA%20artifacts%20or%20logs%20here.%0A%0ATeam%20type%3A%0AQA%20area%3A%0AArtifacts%20available%3A%0APreferred%20audit%20time%3A">
+      Book audit
+    </a>
+  </header>
+
+  <main id="top">
+    <section class="hero section-band">
+      <div class="hero-copy">
+        <h1>Turn scattered QA history into reusable QA memory</h1>
+        <p class="buyer-line">For QA teams testing APIs, GraphQL and data pipelines.</p>
+        <p class="hero-lead">BQA-OS takes sanitized bug reports, regression notes, prompts and session logs, then packages the repeated QA knowledge into project-specific artifacts and 3-5 reusable workflows for your team.</p>
+        <div class="hero-actions" aria-label="Primary actions">
+          <a class="button primary" href="https://github.com/mshegolev/bqa-os/issues/new?title=QA%20Memory%20Audit%20request&amp;body=Please%20do%20not%20paste%20private%20QA%20artifacts%20or%20logs%20here.%0A%0ATeam%20type%3A%0AQA%20area%3A%0AArtifacts%20available%3A%0APreferred%20audit%20time%3A">Book a 20-minute QA Memory Audit</a>
+          <a class="button secondary" href="https://github.com/mshegolev/bqa-os/issues/new?title=2-week%20QA%20Memory%20Pilot%20application&amp;body=Please%20do%20not%20paste%20private%20QA%20artifacts%20or%20logs%20here.%0A%0AUse%20case%3A%0AArtifact%20types%3A%0AExpected%20pilot%20outcome%3A%0ATimeline%3A">Apply for 2-week paid pilot</a>
+        </div>
+      </div>
+
+      <div class="pilot-board" aria-label="Pilot input and output preview">
+        <div class="board-column before">
+          <span class="board-label">Before</span>
+          <h2>Scattered QA context</h2>
+          <ul>
+            <li>Bug reports with missing repro details</li>
+            <li>Regression notes spread across chats and docs</li>
+            <li>Prompts that worked once and disappeared</li>
+            <li>Session logs that never become reusable checks</li>
+          </ul>
+        </div>
+        <div class="board-flow" aria-label="BQA CLI flow">
+          <code>bqa discover</code>
+          <code>bqa ingest2</code>
+          <code>bqa build</code>
+        </div>
+        <div class="board-column after">
+          <span class="board-label">After</span>
+          <h2>Reusable QA memory</h2>
+          <ul>
+            <li>Project profile and risk areas</li>
+            <li>Common bug patterns</li>
+            <li>API, GraphQL and ETL workflow prompts</li>
+            <li>Human-reviewed pilot deliverables</li>
+          </ul>
+        </div>
       </div>
     </section>
 
-    <section id="flow" class="citadel">
-      <h2>From sessions to QA operating system</h2>
-      <div class="steps">
-        <article><span>01</span><strong>Session Mine</strong><p>Collect sanitized QA notes and runtime sessions.</p></article>
-        <article><span>02</span><strong>Sanitizer Gate</strong><p>Keep private data out of public artifacts.</p></article>
-        <article><span>03</span><strong>Knowledge Forge</strong><p>Create reusable QA patterns and prompts.</p></article>
-        <article><span>04</span><strong>Agent Hall</strong><p>Unlock project-specific QA agents.</p></article>
-        <article><span>05</span><strong>Workflow Command</strong><p>Package repeatable API, GraphQL, ETL, and data-quality workflows.</p></article>
+    <section id="pilot" class="section-band pilot-strip">
+      <div>
+        <h2>10-30 sanitized QA artifacts in</h2>
+        <p>Send test notes, bug reports, regression checklists, prompts or sanitized session logs. Keep secrets, customer data and production logs out of the public channel.</p>
+      </div>
+      <div>
+        <h2>3-5 reusable workflows out</h2>
+        <p>Receive a reusable QA memory base plus AI-assisted workflows for repeated checks such as API regression, GraphQL functional testing or ETL data validation.</p>
       </div>
     </section>
 
-    <section class="artifacts">
-      <h2>Target artifacts</h2>
-      <ul>
-        <li>etl_patterns.yaml</li>
-        <li>graphql_patterns.yaml</li>
-        <li>api_patterns.yaml</li>
-        <li>data_quality_patterns.yaml</li>
-        <li>common_bugs.yaml</li>
-        <li>successful_prompts.yaml</li>
-        <li>project_profile.yaml</li>
+    <section class="section-band problem">
+      <div class="section-heading">
+        <h2>Why QA memory matters now</h2>
+        <p>AI coding can accelerate delivery, but QA teams still lose time reconstructing product context, known risks and past checks before every regression cycle.</p>
+      </div>
+      <div class="problem-grid">
+        <article>
+          <h3>Regression knowledge resets</h3>
+          <p>Important checks live in old tickets, chat threads, personal notes and one-off prompts.</p>
+        </article>
+        <article>
+          <h3>Bug reports vary by author</h3>
+          <p>Repro steps, data setup, expected behavior and impact are inconsistent across teams.</p>
+        </article>
+        <article>
+          <h3>Data checks are hard to repeat</h3>
+          <p>ETL and data-quality validation depends on remembered table names, edge cases and environment quirks.</p>
+        </article>
+      </div>
+    </section>
+
+    <section id="outputs" class="section-band outputs">
+      <div class="section-heading">
+        <h2>Example outputs from the pilot</h2>
+        <p>Artifacts are generated from sanitized inputs and reviewed for QA usefulness. Public examples here use synthetic data only.</p>
+      </div>
+      <div class="artifact-layout">
+        <div class="artifact-list" aria-label="Generated artifact list">
+          <article>
+            <h3>project_profile.yaml</h3>
+            <p>Project domain, test surfaces, risk areas and recurring QA vocabulary.</p>
+          </article>
+          <article>
+            <h3>common_bugs.yaml</h3>
+            <p>Repeated defect shapes, missing checks and report-quality patterns.</p>
+          </article>
+          <article>
+            <h3>graphql_patterns.yaml</h3>
+            <p>Query, mutation, schema and resolver checks that tend to repeat.</p>
+          </article>
+          <article>
+            <h3>etl_patterns.yaml</h3>
+            <p>Data freshness, mapping, reconciliation and backfill validation patterns.</p>
+          </article>
+          <article>
+            <h3>successful_prompts.yaml</h3>
+            <p>Prompt patterns that reliably produce useful QA analysis and next steps.</p>
+          </article>
+        </div>
+        <figure class="yaml-example">
+          <figcaption>synthetic example</figcaption>
+          <pre><code>project:
+  domain: api_regression
+  qa_surfaces:
+    - REST contract checks
+    - GraphQL resolver behavior
+    - ETL reconciliation jobs
+risk_areas:
+  - auth edge cases
+  - pagination drift
+  - stale warehouse partitions
+workflow_candidates:
+  - api regression triage
+  - GraphQL smoke pack
+  - ETL data quality review</code></pre>
+        </figure>
+      </div>
+    </section>
+
+    <section class="section-band flow-section">
+      <div class="section-heading">
+        <h2>Demo flow</h2>
+        <p>The pilot stays close to the local CLI flow so the result is usable in a real repository instead of a slide deck.</p>
+      </div>
+      <ol class="flow-list">
+        <li>
+          <code>bqa discover</code>
+          <span>Detect the project shape and likely QA surfaces.</span>
+        </li>
+        <li>
+          <code>bqa ingest2</code>
+          <span>Normalize sanitized QA artifacts into a local BQA workspace.</span>
+        </li>
+        <li>
+          <code>bqa build</code>
+          <span>Build reusable knowledge artifacts and candidate QA workflows.</span>
+        </li>
+      </ol>
+    </section>
+
+    <section id="privacy" class="section-band privacy">
+      <div>
+        <h2>local-first and privacy-safe by default</h2>
+        <p>BQA-OS is designed so customer-specific memory stays local or in the customer's private workspace. This public repo and page use synthetic examples, not real client logs.</p>
+      </div>
+      <ul class="privacy-list">
+        <li>No private session logs in the public repo.</li>
+        <li>No secrets, credentials or production customer data.</li>
+        <li>No promise of fully replacing QA engineers.</li>
+        <li>Human review remains part of the pilot deliverable.</li>
       </ul>
+    </section>
+
+    <section class="section-band faq">
+      <div class="section-heading">
+        <h2>FAQ</h2>
+        <p>Short answers for a first discovery call.</p>
+      </div>
+      <div class="faq-grid">
+        <article>
+          <h3>What data is needed?</h3>
+          <p>10-30 sanitized QA artifacts: test notes, bug reports, regression checklists, prompts or sanitized session logs.</p>
+        </article>
+        <article>
+          <h3>What should not be sent?</h3>
+          <p>Do not send raw production logs, secrets, customer records, credentials or private business data through public channels.</p>
+        </article>
+        <article>
+          <h3>How long does it take?</h3>
+          <p>The pilot is scoped for two weeks, with a 20-minute audit first to confirm artifact quality and the target workflow set.</p>
+        </article>
+        <article>
+          <h3>What is the pilot price hypothesis?</h3>
+          <p>Early paid pilots are expected to be USD 2k-6k for a tightly scoped two-week engagement, confirmed after the audit.</p>
+        </article>
+      </div>
+    </section>
+
+    <section class="section-band final-cta">
+      <div>
+        <h2>Ready to turn QA history into reusable checks?</h2>
+        <p>Start with the audit. Bring the QA artifacts you already have; keep private data out of public channels until scope and handling are agreed.</p>
+      </div>
+      <div class="final-actions">
+        <a class="button primary" href="https://github.com/mshegolev/bqa-os/issues/new?title=QA%20Memory%20Audit%20request&amp;body=Please%20do%20not%20paste%20private%20QA%20artifacts%20or%20logs%20here.%0A%0ATeam%20type%3A%0AQA%20area%3A%0AArtifacts%20available%3A%0APreferred%20audit%20time%3A">Book a 20-minute QA Memory Audit</a>
+        <a class="button secondary" href="https://github.com/mshegolev/bqa-os/issues/new?title=2-week%20QA%20Memory%20Pilot%20application&amp;body=Please%20do%20not%20paste%20private%20QA%20artifacts%20or%20logs%20here.%0A%0AUse%20case%3A%0AArtifact%20types%3A%0AExpected%20pilot%20outcome%3A%0ATimeline%3A">Apply for 2-week paid pilot</a>
+      </div>
     </section>
   </main>
 </body>
