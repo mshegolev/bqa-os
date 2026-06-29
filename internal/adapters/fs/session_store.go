@@ -40,11 +40,12 @@ func (s *SessionStore) SaveNormalized(ctx context.Context, session ports.Normali
 		return "", ctx.Err()
 	default:
 	}
-	path := filepath.Join(s.base(), "normalized", session.Ref.Source, fmt.Sprintf("%06d-%s.md", s.seq, session.SHA256[:12]))
+	relativePath := filepath.Join("normalized", session.Ref.Source, fmt.Sprintf("%06d-%s.md", s.seq, session.SHA256[:12]))
+	path := filepath.Join(s.base(), relativePath)
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 		return "", err
 	}
-	return path, os.WriteFile(path, []byte(session.Content), 0o600)
+	return relativePath, os.WriteFile(path, []byte(session.Content), 0o600)
 }
 
 func (s *SessionStore) SaveIndex(ctx context.Context, index ports.SessionIndex) error {

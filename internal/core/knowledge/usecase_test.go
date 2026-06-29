@@ -2,6 +2,7 @@ package knowledge
 
 import (
 	"context"
+	"errors"
 	"strings"
 	"testing"
 
@@ -66,4 +67,39 @@ func TestUseCaseBuildsKnowledgeArtifacts(t *testing.T) {
 	if strings.Contains(writer.files["graphql_patterns.yaml"], "github_graphql_url") {
 		t.Fatalf("graphql artifact should not be driven by github_graphql_url noise")
 	}
+}
+
+func TestUseCaseReturnsErrorWhenIndexedSessionCannotBeRead(t *testing.T) {
+	reader := failingReader{
+		index: ports.SessionIndex{Entries: []ports.SessionIndexEntry{
+			{OriginalPath: "synthetic-session.md", NormalizedPath: "normalized/codex/missing.md"},
+		}},
+		err: errors.New("open normalized/codex/missing.md: no such file or directory"),
+	}
+	writer := fakeWriter{files: map[string]string{}}
+	uc := UseCase{Reader: reader, Writer: writer, OutputDir: ".bqa/knowledge"}
+
+	_, err := uc.Run(context.Background())
+	if err == nil {
+		t.Fatalf("expected unreadable indexed session error")
+	}
+	if !strings.Contains(err.Error(), "normalized/codex/missing.md") {
+		t.Fatalf("expected error to include normalized path, got %q", err.Error())
+	}
+	if len(writer.files) != 0 {
+		t.Fatalf("expected no artifacts when indexed session cannot be read, got %d", len(writer.files))
+	}
+}
+
+type failingReader struct {
+	index ports.SessionIndex
+	err   error
+}
+
+func (f failingReader) LoadSessionIndex(ctx context.Context) (ports.SessionIndex, error) {
+	return f.index, nil
+}
+
+func (f failingReader) ReadNormalizedSession(ctx context.Context, path string) (string, error) {
+	return "", f.err
 }

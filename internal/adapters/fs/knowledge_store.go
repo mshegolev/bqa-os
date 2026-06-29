@@ -3,8 +3,10 @@ package fs
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/mshegolev/bqa-os/internal/ports"
 )
@@ -39,7 +41,11 @@ func (s KnowledgeStore) ReadNormalizedSession(ctx context.Context, path string) 
 		return "", ctx.Err()
 	default:
 	}
-	data, err := os.ReadFile(path)
+	resolved, err := s.normalizedSessionPath(path)
+	if err != nil {
+		return "", err
+	}
+	data, err := os.ReadFile(resolved)
 	if err != nil {
 		return "", err
 	}
@@ -103,6 +109,26 @@ func (s KnowledgeStore) sessionBase() string {
 		return ".bqa/input/sessions"
 	}
 	return s.SessionBaseDir
+}
+
+func (s KnowledgeStore) normalizedSessionPath(path string) (string, error) {
+	if path == "" {
+		return "", fmt.Errorf("normalized session path is required")
+	}
+	if filepath.IsAbs(path) {
+		return path, nil
+	}
+
+	cleaned := filepath.Clean(path)
+	if cleaned == "." || cleaned == ".." || strings.HasPrefix(cleaned, ".."+string(os.PathSeparator)) {
+		return "", fmt.Errorf("invalid normalized session path %q", path)
+	}
+
+	base := filepath.Clean(s.sessionBase())
+	if cleaned == base || strings.HasPrefix(cleaned, base+string(os.PathSeparator)) {
+		return cleaned, nil
+	}
+	return filepath.Join(base, cleaned), nil
 }
 
 func (s KnowledgeStore) knowledgeDir() string {
