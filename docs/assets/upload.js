@@ -226,15 +226,60 @@ function handleArchive(obj, name) {
     if (field) field.style.display = "";
   } catch (e) { setStatus("decode failed: " + e.message, "err"); }
 }
+/* --- ZIP reading (store + deflate) --------------------------------- */
+async function inflateRaw(bytes) {
+  if (typeof DecompressionStream === "undefined") throw new Error("this browser can't inflate; use a stored zip or json");
+  const ds = new DecompressionStream("deflate-raw");
+  const ab = await new Response(new Blob([bytes]).stream().pipeThrough(ds)).arrayBuffer();
+  return new Uint8Array(ab);
+}
+async function readZip(buffer) {
+  const u8 = new Uint8Array(buffer), dv = new DataView(buffer), dec = new TextDecoder();
+  const files = {}; let off = 0;
+  while (off + 4 <= u8.length && dv.getUint32(off, true) === 0x04034b50) {
+    const method = dv.getUint16(off + 8, true);
+    const compSize = dv.getUint32(off + 18, true);
+    const nameLen = dv.getUint16(off + 26, true), extraLen = dv.getUint16(off + 28, true);
+    const name = dec.decode(u8.subarray(off + 30, off + 30 + nameLen));
+    const dataStart = off + 30 + nameLen + extraLen;
+    const raw = u8.subarray(dataStart, dataStart + compSize);
+    let out = raw;
+    if (method === 8) out = await inflateRaw(raw);
+    else if (method !== 0) { off = dataStart + compSize; continue; }
+    files[name] = dec.decode(out);
+    off = dataStart + compSize;
+  }
+  return files;
+}
+// pick the most archive-like JSON entry from a zip's text files
+function archiveFromZip(files) {
+  const jsons = Object.keys(files).filter((n) => n.toLowerCase().endsWith(".json"));
+  let best = null;
+  for (const n of jsons) {
+    try { const o = JSON.parse(files[n]); if (o && (Array.isArray(o.sessions) || Array.isArray(o.agents))) return o; if (!best) best = o; } catch (_) {}
+  }
+  if (best) return best;
+  throw new Error("no archive JSON (with sessions/agents) found in the zip");
+}
+
 function readFile(file) {
+  const name = (file.name || "").toLowerCase();
   setStatus("reading " + file.name + " ...");
   const reader = new FileReader();
-  reader.onload = () => {
-    try { handleArchive(JSON.parse(reader.result), file.name); }
-    catch (e) { setStatus("not valid JSON: " + e.message, "err"); }
-  };
   reader.onerror = () => setStatus("could not read file", "err");
-  reader.readAsText(file);
+  if (name.endsWith(".zip")) {
+    reader.onload = () => {
+      readZip(reader.result).then((files) => handleArchive(archiveFromZip(files), file.name))
+        .catch((e) => setStatus("zip read failed: " + e.message, "err"));
+    };
+    reader.readAsArrayBuffer(file);
+  } else {
+    reader.onload = () => {
+      try { handleArchive(JSON.parse(reader.result), file.name); }
+      catch (e) { setStatus("not valid JSON: " + e.message, "err"); }
+    };
+    reader.readAsText(file);
+  }
 }
 
 function downloadZip() {

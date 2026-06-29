@@ -41,6 +41,19 @@
     .lb { font-size: 15px; } .lb-box { margin-top: 6px; }
     .lb-row { display: flex; gap: 8px; padding: 3px 0; border-bottom: 1px solid rgba(0,0,0,.25); }
     .lb-rank { color: var(--gold); width: 30px; } .lb-waves { flex: 1; color: var(--bone); } .lb-date { color: var(--stone-500); }
+    .newtop { color: var(--gold); font-size: 16px; }
+
+    .cmdgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(94px, 1fr)); gap: 6px; margin: 6px 0 4px; }
+    .cmd { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 8px 4px; cursor: pointer; border: none;
+      background: linear-gradient(180deg, var(--stone-600), var(--stone-700)); color: var(--parchment);
+      box-shadow: inset 2px 2px 0 var(--bevel-light), inset -2px -2px 0 var(--bevel-dark); }
+    .cmd:hover:not(:disabled) { filter: brightness(1.12); }
+    .cmd:active:not(:disabled) { box-shadow: inset 2px 2px 0 var(--bevel-dark), inset -2px -2px 0 var(--bevel-light); }
+    .cmd:disabled { opacity: .42; cursor: not-allowed; }
+    .cmd-g { font-size: 16px; color: var(--gold); } .cmd-l { font-size: 12px; } .cmd-cost { font-family: var(--font-display); font-size: 7px; color: var(--forest-bright); }
+
+    #stage:fullscreen { display: grid; place-content: center; background: #14110d; padding: 0; width: 100vw; height: 100vh; }
+    #stage:fullscreen canvas#field { height: 94vh; width: auto; }
   </style>
 </head>
 <body>
@@ -48,9 +61,8 @@
     <div class="topbar">
       <div class="brand"><div class="sigil pixel"></div><b>BQA-OS</b></div>
       <nav class="nav">
-        <a class="btn secondary" href="index.html">Citadel</a>
-        <a class="btn secondary" href="upload.html">Decoder</a>
-        <a class="btn secondary" href="map.html">War Map</a>
+        <a class="btn secondary" href="index.html">◆ Decoder</a>
+        <a class="btn secondary" href="https://github.com/mshegolev/bqa-os">Repo</a>
       </nav>
     </div>
 
@@ -67,13 +79,14 @@
       <span class="r">🏰 Citadel <b id="c-hp">100%</b></span>
       <span class="r">⚑ Wave <b id="r-wave">—</b></span>
       <button class="btn secondary" id="mute" title="Toggle sound" style="padding:6px 9px">🔊</button>
+      <button class="btn secondary" id="fs" title="Fullscreen" style="padding:6px 9px">⛶</button>
     </div>
     <div class="timeline" id="timeline"></div>
 
     <div class="layout">
       <section class="panel">
         <div class="panel-title">⚔ The Field</div>
-        <div class="stage">
+        <div class="stage" id="stage">
           <canvas id="field"></canvas>
           <div class="start" id="start">
             <h2>Battle for the Release</h2>
@@ -89,7 +102,9 @@
             <p class="hint">Decode an archive on the Decoder first to seed your own agents.</p>
           </div>
         </div>
-        <p class="hint">Humans = SDLC roles (build, deliver, prompt-harden, secure, observe, defend, release). Orcs = deadlines, bugs, CVEs, incidents, tech debt. Click an agent to inspect its role.</p>
+        <div class="panel-title" style="margin-top:12px">⚒ Command — spend resources to reinforce</div>
+        <div class="cmdgrid" id="commands"></div>
+        <p class="hint">Recruit agents, deploy an MCP relay (observability), or upgrade skills. Humans = SDLC roles; orcs = deadlines, bugs, CVEs, incidents, tech debt. Click an agent to inspect its role.</p>
       </section>
 
       <div>
