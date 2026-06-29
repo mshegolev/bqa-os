@@ -28,8 +28,6 @@ func (u UseCase) Run(ctx context.Context) (Result, error) {
 		"data_quality": {},
 		"bugs":         {},
 		"prompts":      {},
-		"droid":        {},
-		"runtime":      {},
 	}
 	profile := ProjectProfile{Sessions: len(index.Entries)}
 	processed := 0
@@ -66,14 +64,6 @@ func (u UseCase) Run(ctx context.Context) (Result, error) {
 		if isPromptSignal(lower) {
 			findings["prompts"] = append(findings["prompts"], Finding{Name: "successful_prompt_candidate", Domain: "prompts", Evidence: evidence(text, promptNeedle(lower)), SourcePath: entry.NormalizedPath})
 		}
-		if isDroidSignal(sourcePath) {
-			profile.DroidSignals++
-			findings["droid"] = append(findings["droid"], Finding{Name: "factory_droid_session", Domain: "droid", Evidence: evidence(text, droidNeedle(sourcePath)), SourcePath: entry.NormalizedPath})
-		}
-		if isRuntimeSignal(lower, sourcePath) {
-			profile.RuntimeSignals++
-			findings["runtime"] = append(findings["runtime"], Finding{Name: "runtime_execution_pattern", Domain: "runtime", Evidence: evidence(text, runtimeNeedle(lower)), SourcePath: entry.NormalizedPath})
-		}
 	}
 
 	artifacts := []Artifact{
@@ -83,8 +73,6 @@ func (u UseCase) Run(ctx context.Context) (Result, error) {
 		{Filename: "data_quality_patterns.yaml", Content: renderFindings("data_quality_patterns", findings["data_quality"])},
 		{Filename: "common_bugs.yaml", Content: renderFindings("common_bugs", findings["bugs"])},
 		{Filename: "successful_prompts.yaml", Content: renderFindings("successful_prompts", findings["prompts"])},
-		{Filename: "droid_patterns.yaml", Content: renderFindings("droid_patterns", findings["droid"])},
-		{Filename: "runtime_patterns.yaml", Content: renderFindings("runtime_patterns", findings["runtime"])},
 		{Filename: "project_profile.yaml", Content: renderProfile(profile)},
 	}
 
@@ -147,17 +135,6 @@ func isPromptSignal(text string) bool {
 	return hasAny(text, "task:", "read .bqa", "act as", "please", "your task", "implement", "analyze this repository")
 }
 
-func isDroidSignal(sourcePath string) bool {
-	return hasAny(sourcePath, "/.factory/", "normalized/droid")
-}
-
-func isRuntimeSignal(text string, sourcePath string) bool {
-	if hasAny(sourcePath, "normalized/droid") {
-		return true
-	}
-	return hasAny(sourcePath, "normalized/claude", "normalized/codex", "normalized/opencode") && hasAny(text, "tooluse", "tool call", "run command", "sandbox", "approval", "transcript", "agenttype")
-}
-
 func isMetadataOnly(text string) bool {
 	return hasAny(text, "agenttype", "tooluseid") && !hasAny(text, "airflow", "spark", "hive", "oozie", "etl_logs", "reconciliation", "parquet")
 }
@@ -200,21 +177,24 @@ func evidence(text string, needle string) string {
 	return strings.TrimSpace(text[start:end])
 }
 
-func etlNeedle(text string) string     { return firstNeedle(text, "airflow", "spark", "hive", "oozie", "etl_logs", "reconciliation", "parquet", "row count", "etl") }
+func etlNeedle(text string) string {
+	return firstNeedle(text, "airflow", "spark", "hive", "oozie", "etl_logs", "reconciliation", "parquet", "row count", "etl")
+}
 func graphqlNeedle(text string) string {
 	return firstNeedle(text, "graphql query", "graphql mutation", "graphql schema", "graphql resolver", "graphql")
 }
-func apiNeedle(text string) string     { return firstNeedle(text, "rest api", "http status", "status code", "endpoint", "contract test", "openapi", "request payload") }
-func dqNeedle(text string) string      { return firstNeedle(text, "data quality", "schema drift", "null check", "duplicate check", "row count", "checksum", "dq check") }
-func failureNeedle(text string) string { return firstNeedle(text, "traceback", "exception", "failed", "failure", "error:", "panic", "regression", "flaky") }
-func promptNeedle(text string) string  { return firstNeedle(text, "task:", "your task", "read .bqa", "act as", "please", "implement", "analyze this repository") }
-func droidNeedle(sourcePath string) string {
-	if strings.Contains(sourcePath, "/.factory/") {
-		return ".factory"
-	}
-	return "droid"
+func apiNeedle(text string) string {
+	return firstNeedle(text, "rest api", "http status", "status code", "endpoint", "contract test", "openapi", "request payload")
 }
-func runtimeNeedle(text string) string { return firstNeedle(text, "tooluse", "tool call", "run command", "sandbox", "approval", "transcript", "agenttype") }
+func dqNeedle(text string) string {
+	return firstNeedle(text, "data quality", "schema drift", "null check", "duplicate check", "row count", "checksum", "dq check")
+}
+func failureNeedle(text string) string {
+	return firstNeedle(text, "traceback", "exception", "failed", "failure", "error:", "panic", "regression", "flaky")
+}
+func promptNeedle(text string) string {
+	return firstNeedle(text, "task:", "your task", "read .bqa", "act as", "please", "implement", "analyze this repository")
+}
 
 func firstNeedle(text string, values ...string) string {
 	for _, value := range values {
@@ -246,7 +226,7 @@ func renderFindings(root string, items []Finding) string {
 }
 
 func renderProfile(p ProjectProfile) string {
-	return fmt.Sprintf("project_profile:\n  sessions_analyzed: %d\n  signals:\n    etl: %d\n    graphql: %d\n    api: %d\n    data_quality: %d\n    droid: %d\n    runtime: %d\n  maturity: initial\n", p.Sessions, p.ETLSignals, p.GraphQLSignals, p.APISignals, p.DQSignals, p.DroidSignals, p.RuntimeSignals)
+	return fmt.Sprintf("project_profile:\n  sessions_analyzed: %d\n  signals:\n    etl: %d\n    graphql: %d\n    api: %d\n    data_quality: %d\n  maturity: initial\n", p.Sessions, p.ETLSignals, p.GraphQLSignals, p.APISignals, p.DQSignals)
 }
 
 func uniqueFindings(items []Finding) []Finding {

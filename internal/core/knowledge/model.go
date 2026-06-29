@@ -24,6 +24,4 @@ type ProjectProfile struct {
 	GraphQLSignals int
 	APISignals     int
 	DQSignals      int
-	DroidSignals   int
-	RuntimeSignals int
 }
