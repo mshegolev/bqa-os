@@ -639,6 +639,9 @@ function onClick(e) {
   if (hit) {
     const b = el("p"); const n = el("b", null, hit.label); n.style.color = hit.color; b.appendChild(n); ins.appendChild(b);
     ins.appendChild(el("p", "muted", "SDLC role")); ins.appendChild(el("p", null, hit.sdlc));
+    if (hit.strong) { const s = el("p", "str"); s.appendChild(el("b", null, "▲ Strength: ")); s.appendChild(document.createTextNode(hit.strong)); ins.appendChild(s); }
+    if (hit.weak) { const w = el("p", "wk"); w.appendChild(el("b", null, "▼ Weakness: ")); w.appendChild(document.createTextNode(hit.weak)); ins.appendChild(w); }
+    if (hit.drift > 0) ins.appendChild(el("p", "wk", "≈ Model Drift active — missing! Cast Clear Context."));
     ins.appendChild(el("p", "hint", "Job: " + hit.job + (NODE_RES[hit.job] ? " → " + NODE_RES[hit.job] : "")));
   } else ins.appendChild(el("p", "muted", "Click an agent to inspect."));
 }

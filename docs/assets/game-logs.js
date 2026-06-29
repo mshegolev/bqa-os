@@ -20,14 +20,14 @@ const PHASES = [
 /* Human faction — each maps to an SDLC role. job: which resource node
    they harvest (or 'defend'/'build'/'release'). */
 const UNIT_TYPES = {
-  builder:             { label: "Builder Agent",       sdlc: "Setup / CI/CD / architecture",     color: "#b9a37a", glyph: "⌂", job: "build" },
-  feature_worker:      { label: "Feature Worker",      sdlc: "Feature delivery",                 color: "#f2c14e", glyph: "★", job: "gold" },
-  prompt_smith:        { label: "Prompt Smith",        sdlc: "Prompt engineering / guardrails",  color: "#8e6fc4", glyph: "✦", job: "wood" },
-  hardening_engineer:  { label: "Hardening Engineer",  sdlc: "Security hardening / validation",  color: "#6fb3e0", glyph: "⛨", job: "stone" },
-  context_logger:      { label: "Context Logger",      sdlc: "Logs / telemetry / observability", color: "#7bc45a", glyph: "≋", job: "mana" },
-  incident_defender:   { label: "Incident Defender",   sdlc: "Triage / mitigation / response",   color: "#e0883a", glyph: "⚔", job: "defend" },
-  release_captain:     { label: "Release Captain",     sdlc: "Release readiness / launch",       color: "#f4eddc", glyph: "✚", job: "release" },
-  sentinel_archer:     { label: "Sentinel Archer",     sdlc: "Static analysis / scanning (ranged)", color: "#9ed36a", glyph: "➹", job: "defend", ranged: true, range: 150, dmg: 24 },
+  builder:             { label: "Builder Agent",       sdlc: "Setup / CI/CD / architecture",     color: "#b9a37a", glyph: "⌂", job: "build",  strong: "Repairs & raises the citadel", weak: "Cannot attack" },
+  feature_worker:      { label: "Feature Worker",      sdlc: "Feature delivery",                 color: "#f2c14e", glyph: "★", job: "gold",   strong: "Fast value (gold) delivery", weak: "Fragile in melee" },
+  prompt_smith:        { label: "Prompt Smith",        sdlc: "Prompt engineering / guardrails",  color: "#8e6fc4", glyph: "✦", job: "wood",   strong: "Hardens prompts vs drift", weak: "Low HP up close" },
+  hardening_engineer:  { label: "Hardening Engineer",  sdlc: "Security hardening / validation",  color: "#6fb3e0", glyph: "⛨", job: "stone",  strong: "Resists CVEs & incidents", weak: "Slow to redeploy" },
+  context_logger:      { label: "Context Logger",      sdlc: "Logs / telemetry / observability", color: "#7bc45a", glyph: "≋", job: "mana",   strong: "Feeds signal / spots threats", weak: "Weak attacker" },
+  incident_defender:   { label: "Incident Defender",   sdlc: "Triage / mitigation / response",   color: "#e0883a", glyph: "⚔", job: "defend", strong: "Front-line vs bugs & ogres", weak: "Costly to field" },
+  release_captain:     { label: "Release Captain",     sdlc: "Release readiness / launch",       color: "#f4eddc", glyph: "✚", job: "release",strong: "Rallies the team to ship", weak: "Best only late-game" },
+  sentinel_archer:     { label: "Sentinel Archer",     sdlc: "Static analysis / scanning (ranged)", color: "#9ed36a", glyph: "➹", job: "defend", ranged: true, range: 150, dmg: 24, strong: "Ranged — hits before contact", weak: "Squishy if swarmed" },
 };
 
 /* Orc faction — threats. size scales the sprite; boss flags the Warlord. */
