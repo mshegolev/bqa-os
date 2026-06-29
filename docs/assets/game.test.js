@@ -34,6 +34,10 @@ function runJSON(context, source) {
   return JSON.parse(vm.runInContext(`JSON.stringify(${source})`, context));
 }
 
+function gameHTML() {
+  return fs.readFileSync(path.join(__dirname, "..", "game.html"), "utf8");
+}
+
 test("Story Demo starts with only the feature worker recruit unlocked", () => {
   const context = loadGame();
   const states = runJSON(context, `(() => {
@@ -145,4 +149,14 @@ test("Story Demo renders locked recruit buttons with lock glyphs and hints", () 
     { id: "incident_defender", locked: true, disabled: true, glyph: "🔒", hint: "🔒 After hardening", title: "After hardening" },
     { id: "sentinel_archer", locked: true, disabled: true, glyph: "🔒", hint: "🔒 When incidents start", title: "When incidents start" },
   ]);
+});
+
+test("game start screen stays in the stage flow instead of overlapping HUD or command bar", () => {
+  const html = gameHTML();
+
+  assert.match(html, /\.stage\s*\{[^}]*display:\s*grid\b/s);
+  assert.match(html, /canvas#field,\s*\.start\s*\{[^}]*grid-area:\s*1\s*\/\s*1\b/s);
+  assert.doesNotMatch(html, /\.start\s*\{[^}]*position:\s*absolute\b/s);
+  assert.match(html, /\.start\s*\{[^}]*justify-content:\s*flex-start\b/s);
+  assert.match(html, /\.start\s*\{[^}]*overflow:\s*auto\b/s);
 });
