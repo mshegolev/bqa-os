@@ -15,7 +15,9 @@ func TestTeamPipelineCmdPrintsReadyQAPlan(t *testing.T) {
 		"  \"title\": \"Ready QA workflow bug\",\n" +
 		"  \"body\": \"## Manual verification\\n\\n```bash\\ngo test ./...\\n```\",\n" +
 		"  \"labels\": [\n" +
-		"    {\"name\": \"bqa:ready-qa\"}\n" +
+		"    {\"name\": \"bqa:arch-approved\"},\n" +
+		"    {\"name\": \"bqa:ready-qa\"},\n" +
+		"    {\"name\": \"bqa:codex-team\"}\n" +
 		"  ]\n" +
 		"}"
 	if err := os.WriteFile(path, []byte(body), 0o600); err != nil {
@@ -29,7 +31,7 @@ func TestTeamPipelineCmdPrintsReadyQAPlan(t *testing.T) {
 	cmd.SetArgs([]string{
 		"pipeline",
 		"--issue-json", path,
-		"--issue-number", "75",
+		"--issue-number", "27",
 		"--repo", "mshegolev/bqa-os",
 		"--subagent", "go-cli-implementer",
 	})
@@ -42,7 +44,7 @@ func TestTeamPipelineCmdPrintsReadyQAPlan(t *testing.T) {
 	for _, expected := range []string{
 		"Mode: dry-run",
 		"Source of truth: GitHub issue",
-		"Issue: #75 Ready QA workflow bug",
+		"Issue: #27 Ready QA workflow bug",
 		"Current state: ready-qa",
 		"Development: complete",
 		"QA: ready",
