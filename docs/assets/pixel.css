@@ -79,7 +79,9 @@ body::after {
 img, canvas, .pixel { image-rendering: pixelated; }
 
 /* Typography ---------------------------------------------- */
-h1, h2, h3, .display {
+/* Press Start 2P only for the big H1 (it's hard to read small);
+   everything else uses the very legible VT323 pixel font, larger. */
+h1, .display {
   font-family: var(--font-display);
   color: var(--gold);
   line-height: 1.5;
@@ -88,9 +90,17 @@ h1, h2, h3, .display {
   text-shadow: var(--px) var(--px) 0 var(--bevel-dark);
   margin: 0 0 .6em;
 }
-h1 { font-size: clamp(15px, 2.7vw, 23px); }
-h2 { font-size: clamp(11px, 1.8vw, 16px); }
-h3 { font-size: 10px; color: var(--parchment); }
+h2, h3 {
+  font-family: var(--font-body);
+  color: var(--gold);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin: 0 0 .5em;
+  font-weight: 700;
+}
+h1 { font-size: clamp(16px, 2.7vw, 24px); }
+h2 { font-size: clamp(20px, 2.4vw, 26px); }
+h3 { font-size: 19px; color: var(--parchment); }
 
 a { color: var(--gold); text-decoration: none; }
 a:hover { color: var(--bone); text-decoration: underline; }
@@ -98,8 +108,8 @@ a:hover { color: var(--bone); text-decoration: underline; }
 p { margin: 0 0 .8em; color: var(--parchment-dim); }
 
 .eyebrow {
-  font-family: var(--font-display);
-  font-size: 8px;
+  font-family: var(--font-body);
+  font-size: 16px;
   color: var(--forest-bright);
   letter-spacing: 2px;
   text-transform: uppercase;
@@ -140,19 +150,20 @@ p { margin: 0 0 .8em; color: var(--parchment-dim); }
 }
 .panel + .panel { margin-top: 22px; }
 .panel-title {
-  font-family: var(--font-display);
-  font-size: 10px;
+  font-family: var(--font-body);
+  font-size: 19px; font-weight: 700;
   color: var(--gold);
+  text-transform: uppercase; letter-spacing: 1px;
   border-bottom: var(--px) solid var(--stone-600);
-  padding-bottom: 10px;
-  margin: -2px 0 14px;
+  padding-bottom: 8px;
+  margin: -2px 0 12px;
   display: flex; align-items: center; gap: 8px;
 }
 
 /* Buttons ------------------------------------------------- */
 .btn {
-  font-family: var(--font-display);
-  font-size: 9px;
+  font-family: var(--font-body);
+  font-size: 17px; font-weight: 700; letter-spacing: .5px;
   color: var(--stone-900);
   background: linear-gradient(180deg, var(--gold) 0%, var(--gold-deep) 100%);
   border: none;
@@ -174,9 +185,9 @@ p { margin: 0 0 .8em; color: var(--parchment-dim); }
 /* Pixel chips / badges ------------------------------------ */
 .chip {
   display: inline-block;
-  font-family: var(--font-display);
-  font-size: 7px;
-  padding: 4px 6px;
+  font-family: var(--font-body);
+  font-size: 14px; letter-spacing: .5px;
+  padding: 3px 7px;
   color: var(--stone-900);
   background: var(--parchment-dim);
   box-shadow: inset -2px -2px 0 rgba(0,0,0,.35);

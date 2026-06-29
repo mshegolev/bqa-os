@@ -27,12 +27,14 @@ const UNIT_TYPES = {
   context_logger:      { label: "Context Logger",      sdlc: "Logs / telemetry / observability", color: "#7bc45a", glyph: "≋", job: "mana" },
   incident_defender:   { label: "Incident Defender",   sdlc: "Triage / mitigation / response",   color: "#e0883a", glyph: "⚔", job: "defend" },
   release_captain:     { label: "Release Captain",     sdlc: "Release readiness / launch",       color: "#f4eddc", glyph: "✚", job: "release" },
+  sentinel_archer:     { label: "Sentinel Archer",     sdlc: "Static analysis / scanning (ranged)", color: "#9ed36a", glyph: "➹", job: "defend", ranged: true, range: 150, dmg: 24 },
 };
 
 /* Orc faction — threats. size scales the sprite; boss flags the Warlord. */
 const ENEMY_TYPES = {
   bug_grunt:        { label: "Bug Grunt",         color: "#5a8a3a", size: 1.0, hp: 30,  dmg: 6,  speed: 1.4, trust: 4 },
   regression_raider:{ label: "Regression Raider", color: "#7bc45a", size: 0.9, hp: 24,  dmg: 5,  speed: 2.2, trust: 4 },
+  spear_hurler:     { label: "Spear Hurler",      color: "#6f9a3a", size: 1.0, hp: 34,  dmg: 9,  speed: 1.1, trust: 6, ranged: true, range: 130 },
   cve_shaman:       { label: "CVE Shaman",        color: "#6e8e3a", size: 1.1, hp: 55,  dmg: 12, speed: 1.2, trust: 9, cve: true },
   incident_ogre:    { label: "Incident Ogre",     color: "#46662a", size: 1.5, hp: 110, dmg: 18, speed: 1.0, trust: 12 },
   tech_debt_troll:  { label: "Tech Debt Troll",   color: "#3f5a2a", size: 1.6, hp: 160, dmg: 10, speed: 0.6, trust: 10 },

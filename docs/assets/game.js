@@ -33,9 +33,9 @@ const NODE_RES = { gold: "features", wood: "prompts", stone: "hardening", mana: 
 
 const G = {
   state: "ready",          // ready | playing | won | lost
-  units: [], enemies: [], nodes: [], log: [], mcps: [],
+  units: [], enemies: [], nodes: [], log: [], mcps: [], projectiles: [],
   res: { features: 0, prompts: 0, hardening: 0, logs: 0, trust: 60 },
-  skills: { attack: 0, gather: 0 },   // player-bought global upgrades
+  skills: { attack: 0, gather: 0 },   // in-run global upgrades
   phase: 0,
   castle: { tx: 5, ty: 4, hp: 100, maxhp: 100 },
   mine: { tx: 3, ty: 9 },
@@ -164,6 +164,7 @@ function render() {
   for (const e of G.enemies) sp.push({ d: e.tx + e.ty + 0.5, y: e.py, f: () => drawOrc(e) });
   sp.sort((p, q) => (p.d - q.d) || ((p.y || 0) - (q.y || 0)));
   for (const s of sp) s.f();
+  drawProjectiles();
   drawMinimap();
 }
 
@@ -222,6 +223,38 @@ function pickThreat(a, range) {
   }
   return best;
 }
+/* ---- ranged combat (projectiles) ------------------------- */
+function nearestUnit(e) { let best = null, bd = 150; for (const u of G.units) { const d = Math.hypot(u.px - e.px, u.py - e.py); if (d < bd) { bd = d; best = u; } } return best; }
+function shoot(from, target, dmg, color, fromEnemy) {
+  G.projectiles.push({ px: from.px, py: from.py - 10, target, dmg, color, fromEnemy });
+  sfx("command");
+}
+function projAim(p) {
+  if (p.target && p.target.castle) return [isoX(G.castle.tx, G.castle.ty), isoY(G.castle.tx, G.castle.ty) - 16];
+  if (p.target) return [p.target.px, p.target.py - 10];
+  return null;
+}
+function projAlive(p) {
+  if (p.target && p.target.castle) return true;
+  return p.fromEnemy ? G.units.includes(p.target) : G.enemies.includes(p.target);
+}
+function updateProjectiles(dt) {
+  const keep = [];
+  for (const p of G.projectiles) {
+    if (!projAlive(p)) continue;                 // target gone → fizzle
+    const aim = projAim(p), dx = aim[0] - p.px, dy = aim[1] - p.py, d = Math.hypot(dx, dy);
+    if (d < 8) {
+      if (p.target.castle) { G.castle.hp -= p.dmg * 0.6; G.res.trust = clamp(G.res.trust - p.dmg * 0.1, 0, 100); }
+      else if (p.fromEnemy) { p.target.hp -= p.dmg; }
+      else { p.target.hp -= p.dmg; if (p.target.hp <= 0) killEnemy(p.target); }
+      continue;
+    }
+    const v = 270 * dt; p.px += dx / d * v; p.py += dy / d * v; keep.push(p);
+  }
+  G.projectiles = keep;
+}
+function drawProjectiles() { for (const p of G.projectiles) { px(p.px - 1, p.py - 1, 3, 3, "#14110d"); px(p.px - 1, p.py - 1, 2, 2, p.color); } }
+
 function update(dt) {
   G.dt = dt;
   if (G.state !== "playing") return;
@@ -242,7 +275,11 @@ function update(dt) {
     if (a.hp <= 0) continue;
     const threat = pickThreat(a, a.job === "defend" ? 1e9 : 260);
     if (threat) {
-      if (moveToward(a, threat.tx, threat.ty, 1.8)) {
+      const dist = Math.hypot(threat.px - a.px, threat.py - a.py);
+      if (a.ranged && dist <= (a.range || 130)) {
+        a.cd = (a.cd || 0) - dt;
+        if (a.cd <= 0) { shoot(a, threat, (a.dmg || 20) + G.skills.attack * 8, "#eaf3ff", false); a.cd = 0.8; }
+      } else if (moveToward(a, threat.tx, threat.ty, 1.8)) {
         threat.hp -= (36 + G.skills.attack * 12) * dt;
         if (threat.hp <= 0) killEnemy(threat);
       }
@@ -262,8 +299,18 @@ function update(dt) {
   // MCP relays: passive observability — signal trickle + light castle repair
   for (const m of G.mcps) { G.res.logs += 1.2 * dt; G.castle.hp = Math.min(G.castle.maxhp, G.castle.hp + 0.6 * dt); }
 
-  // enemies march on the castle
+  // enemies march on the castle (ranged ones stop and pelt it / nearby units)
   for (const e of G.enemies) {
+    if (e.ranged) {
+      const tgt = nearestUnit(e);
+      const aimX = tgt ? tgt.px : isoX(G.castle.tx, G.castle.ty);
+      const aimY = tgt ? tgt.py : isoY(G.castle.tx, G.castle.ty);
+      if (Math.hypot(aimX - e.px, aimY - e.py) <= (e.range || 120)) {
+        e.cd = (e.cd || 0) - dt;
+        if (e.cd <= 0) { shoot(e, tgt || { castle: true }, e.dmg, "#caa05a", true); e.cd = 1.1; }
+      } else moveToward(e, G.castle.tx, G.castle.ty, e.speed);
+      continue;
+    }
     if (moveToward(e, G.castle.tx, G.castle.ty, e.speed)) {
       // reaching the wall hurts the citadel; the boss hits hardest, but the
       // outcome is decided by the battle (castle HP / trust), not an instakill.
@@ -274,6 +321,14 @@ function update(dt) {
 
   // passive trust from delivery
   G.res.trust = clamp(G.res.trust + (G.units.length && !G.enemies.length ? 2 * dt : 0), 0, 100);
+
+  // survival base income — keeps the Command panel usable even mid-fight
+  if (G.mode === "survival") {
+    const k = 1 + G.phase * 0.25;
+    G.res.features += 1.6 * k * dt; G.res.prompts += 1.2 * k * dt;
+    G.res.hardening += 1.2 * k * dt; G.res.logs += 1.0 * k * dt;
+  }
+  updateProjectiles(dt);
 
   evaluateEnd(dt);
   syncPanels();
@@ -307,18 +362,19 @@ function spawnSurvivalWave() {
   if (G.wave > 0) G.wavesSurvived = G.wave;        // previous wave cleared
   G.wave++;
   const w = G.wave;
-  const grunts = 1 + Math.floor(w * 0.6);
+  const power = G.units.length;                       // your army size drives the threat
+  const grunts = 1 + Math.floor(w * 0.6 + power * 0.4);
   for (let i = 0; i < grunts; i++) spawnEnemy(i % 4 === 3 ? "regression_raider" : "bug_grunt");
+  if (w >= 2 && w % 2 === 0) spawnEnemy("spear_hurler");
   if (w >= 3) spawnEnemy("cve_shaman");
   if (w >= 4 && w % 2 === 0) spawnEnemy("incident_ogre");
   if (w >= 6 && w % 3 === 0) spawnEnemy("tech_debt_troll");
   if (w >= 8 && w % 4 === 0) spawnEnemy("deadline_warlord");
-  // reinforcements: the agent army grows each wave
-  const reinforce = ["incident_defender", "feature_worker", "hardening_engineer", "prompt_smith", "context_logger"];
-  spawnUnit(reinforce[(w - 1) % reinforce.length]);
+  // a small free reinforcement keeps passive play viable; real growth = recruiting
+  if (w % 2 === 1) spawnUnit(["incident_defender", "sentinel_archer"][(w >> 1) % 2]);
   G.phase = Math.min(PHASES.length - 1, Math.floor(w / 2));
   G.waveGap = 2.5;
-  logMsg("Wave " + w + " — the horde advances.", w % 5 === 0 ? "high" : undefined);
+  logMsg("Wave " + w + " advances — army " + power + " vs " + grunts + "+ orcs.", w % 5 === 0 ? "high" : undefined);
   sfx("wave");
 }
 
@@ -389,7 +445,7 @@ const ECONOMY = {
   recruit: {
     feature_worker: { features: 8 }, prompt_smith: { prompts: 8 },
     hardening_engineer: { hardening: 8 }, incident_defender: { features: 6, hardening: 6 },
-    context_logger: { logs: 6 },
+    context_logger: { logs: 6 }, sentinel_archer: { features: 7, hardening: 7 },
   },
   mcp: { logs: 12, hardening: 8 },
   skill: { attack: { features: 10, hardening: 10 }, gather: { prompts: 10, logs: 6 } },
@@ -400,13 +456,20 @@ const COMMANDS = [
   { id: "prompt_smith", label: "Prompt Smith", glyph: "✦", kind: "recruit" },
   { id: "hardening_engineer", label: "Hardening Eng.", glyph: "⛨", kind: "recruit" },
   { id: "incident_defender", label: "Defender", glyph: "⚔", kind: "recruit" },
+  { id: "sentinel_archer", label: "Archer (ranged)", glyph: "➹", kind: "recruit" },
   { id: "mcp", label: "MCP relay", glyph: "⛁", kind: "mcp" },
   { id: "attack", label: "+Attack", glyph: "⚒", kind: "skill" },
   { id: "gather", label: "+Gather", glyph: "⛏", kind: "skill" },
 ];
+// Costs rise the more you already have, so growth is steady, never trivial,
+// and the challenge scales proportionally with your army.
 function costFor(c) {
-  if (c.kind === "recruit") return ECONOMY.recruit[c.id];
-  if (c.kind === "mcp") return ECONOMY.mcp;
+  if (c.kind === "recruit") {
+    const base = ECONOMY.recruit[c.id], n = G.units.filter((u) => u.type === c.id).length, out = {};
+    for (const k in base) out[k] = Math.round(base[k] * (1 + 0.2 * n));
+    return out;
+  }
+  if (c.kind === "mcp") { const n = G.mcps.length, out = {}; for (const k in ECONOMY.mcp) out[k] = Math.round(ECONOMY.mcp[k] * (1 + 0.35 * n)); return out; }
   const base = ECONOMY.skill[c.id], lvl = G.skills[c.id], out = {};
   for (const k in base) out[k] = base[k] * (lvl + 1);
   return out;
@@ -468,6 +531,7 @@ function loop(ts) {
   update(dt); render();
   if (G.state === "won" || G.state === "lost") {
     if (G.mode === "survival" && !G.recorded) { if (G.state === "lost") recordScore(G.wavesSurvived); G.recorded = true; }
+    if (!G.awarded) { awardPoints(); G.awarded = true; }
     sfx(G.state === "won" ? "win" : "lose");
     return showModal();
   }
@@ -526,10 +590,12 @@ function showModal() {
     stats.appendChild(el("li", null, "Final Trust: " + Math.round(G.res.trust) + "%  ·  Citadel " + Math.max(0, Math.round(G.castle.hp)) + "%"));
   }
   card.appendChild(stats);
+  card.appendChild(el("p", "newtop", "★ Earned " + (G.earnedPoints || 0) + " points" + (G.broughtArchive ? " (incl. +25% for your own agents)" : "") + "."));
   if (survival) {
     if (G.lastRecord && G.lastRecord.beatsOfficial) card.appendChild(el("p", "newtop", "🏆 New official top-3 — " + G.lastRecord.name + ", " + G.lastRecord.waves + " waves! It will be committed to the git leaderboard."));
-    card.appendChild(el("div", "panel-title", "★ Official leaderboard")); const lb = el("div", "lb"); renderLeaderboard(lb); card.appendChild(lb);
+    card.appendChild(el("div", "panel-title", "★ Leaderboard")); const lb = el("div", "lb"); renderLeaderboard(lb); card.appendChild(lb);
   }
+  card.appendChild(el("div", "panel-title", "⚒ Armory — spend points to upgrade")); const arm = el("div", "armory"); arm.id = "upgrades-modal"; renderArmory(arm); card.appendChild(arm);
   const btn = el("button", "btn", "⟲ Play again"); btn.addEventListener("click", () => location.reload());
   card.appendChild(btn); m.appendChild(card);
 }
@@ -550,18 +616,69 @@ function onClick(e) {
   } else ins.appendChild(el("p", "muted", "Click an agent to inspect."));
 }
 
+/* ---- meta-progression: points + persistent upgrades ------ */
+const PT_KEY = "bqa-citadel-points", UP_KEY = "bqa-citadel-upgrades";
+const UPGRADES = [
+  { key: "prompt", label: "Prompt hardening", glyph: "✦", desc: "+8% starting Trust / level" },
+  { key: "mcp", label: "MCP relays", glyph: "⛁", desc: "Start with +1 MCP / level" },
+  { key: "agents", label: "Standing agents", glyph: "♛", desc: "+1 starting defender / level" },
+  { key: "workflow", label: "Workflow tuning", glyph: "⛏", desc: "+1 base Gather & Attack / 2 levels" },
+];
+function getPoints() { try { return parseInt(localStorage.getItem(PT_KEY) || "0", 10) || 0; } catch (_) { return 0; } }
+function setPoints(n) { try { localStorage.setItem(PT_KEY, String(Math.max(0, Math.floor(n)))); } catch (_) {} }
+function getUpgrades() { try { return Object.assign({ prompt: 0, mcp: 0, agents: 0, workflow: 0 }, JSON.parse(localStorage.getItem(UP_KEY) || "{}")); } catch (_) { return { prompt: 0, mcp: 0, agents: 0, workflow: 0 }; } }
+function setUpgrades(u) { try { localStorage.setItem(UP_KEY, JSON.stringify(u)); } catch (_) {} }
+function upCost(lvl) { return 60 + lvl * 70; }   // proportional cost growth
+function buyUpgrade(key) {
+  const u = getUpgrades(), cost = upCost(u[key]);
+  if (getPoints() < cost) return;
+  setPoints(getPoints() - cost); u[key]++; setUpgrades(u);
+  renderArmory(document.getElementById("upgrades-start"));
+  renderArmory(document.getElementById("upgrades-modal"));
+}
+function applyUpgrades() {
+  const u = getUpgrades();
+  G.res.trust = clamp(60 + u.prompt * 8, 0, 100);
+  for (let i = 0; i < u.mcp; i++) addMCP();
+  for (let i = 0; i < u.agents; i++) spawnUnit("incident_defender");
+  G.skills.gather += Math.floor(u.workflow / 2); G.skills.attack += Math.floor(u.workflow / 2);
+}
+function awardPoints() {
+  let pts = G.wavesSurvived * 6 + Math.floor(G.res.features + G.res.prompts + G.res.hardening) + (G.state === "won" ? 60 : 0);
+  if (G.broughtArchive) pts = Math.round(pts * 1.25);   // reward bringing your own agents
+  G.earnedPoints = pts; setPoints(getPoints() + pts);
+}
+function renderArmory(box) {
+  if (!box) return; box.replaceChildren();
+  box.appendChild(el("p", "arm-pts", "★ Points: " + getPoints()));
+  const u = getUpgrades();
+  for (const up of UPGRADES) {
+    const cost = upCost(u[up.key]);
+    const row = el("button", "arm-row"); row.disabled = getPoints() < cost;
+    row.appendChild(el("span", "arm-g", up.glyph));
+    const body = el("div", "arm-body"); body.appendChild(el("b", null, up.label + " · L" + u[up.key])); body.appendChild(el("small", null, up.desc));
+    row.appendChild(body); row.appendChild(el("span", "arm-cost", cost + "pt"));
+    row.addEventListener("click", () => buyUpgrade(up.key));
+    box.appendChild(row);
+  }
+}
+
 /* ---- boot ------------------------------------------------ */
 function resize() { const w = canvas.clientWidth; canvas.width = w; canvas.height = Math.round(w * 0.6); ORIGIN_X = canvas.width / 2; ORIGIN_Y = 56; }
 function seedAgents(seedArchive) {
   spawnUnit("builder");
-  if (seedArchive && Array.isArray(seedArchive.sessions)) {
+  G.broughtArchive = false;
+  if (seedArchive && Array.isArray(seedArchive.sessions) && seedArchive.sessions.length) {
+    G.broughtArchive = true;
     const map = { etl: "feature_worker", api: "hardening_engineer", graphql: "prompt_smith", data_quality: "hardening_engineer", bugs: "incident_defender", prompts: "prompt_smith" };
     const seen = new Set();
     for (const s of seedArchive.sessions) { const u = map[String(s.domain || "").toLowerCase()]; if (u && !seen.has(u)) { seen.add(u); spawnUnit(u); } }
+    logMsg("Your uploaded agents answer the call (+25% points).");
   }
 }
 function begin() {
-  G.state = "playing"; G.clock = 0; G.demoIdx = 0; G.last = 0;
+  applyUpgrades();
+  G.state = "playing"; G.clock = 0; G.demoIdx = 0; G.last = 0; G.awarded = false;
   $("#start").style.display = "none";
   try { if (window.AUDIO) window.AUDIO.music(true); } catch (_) {}
   syncPanels(); requestAnimationFrame(loop);
@@ -593,5 +710,7 @@ document.addEventListener("DOMContentLoaded", () => {
   renderLeaderboard(document.getElementById("lb-start"));
   loadOfficial();
   buildCommands();
+  renderArmory(document.getElementById("upgrades-start"));
   const fs = document.getElementById("fs"); if (fs) fs.addEventListener("click", toggleFullscreen);
+  if (archive) { const note = document.getElementById("archive-note"); if (note) note.style.display = ""; }
 });
