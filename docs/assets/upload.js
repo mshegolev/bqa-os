@@ -249,7 +249,14 @@ document.addEventListener("DOMContentLoaded", () => {
 
   $("#pick").addEventListener("click", () => input.click());
   input.addEventListener("change", (e) => { if (e.target.files[0]) readFile(e.target.files[0]); });
-  $("#demo").addEventListener("click", () => handleArchive(DEMO_ARCHIVE, "demo-archive.json"));
+  const loadDemo = () => handleArchive(DEMO_ARCHIVE, "demo-archive.json");
+  $("#demo").addEventListener("click", loadDemo);
+  const demo2 = $("#demo2");
+  if (demo2) demo2.addEventListener("click", () => {
+    loadDemo();
+    const r = document.getElementById("results");
+    if (r) r.scrollIntoView({ behavior: "smooth", block: "start" });
+  });
   $("#download").addEventListener("click", downloadZip);
 
   ["dragenter", "dragover"].forEach((ev) => drop.addEventListener(ev, (e) => { e.preventDefault(); drop.classList.add("over"); }));
