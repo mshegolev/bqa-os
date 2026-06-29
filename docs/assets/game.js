@@ -33,8 +33,9 @@ const NODE_RES = { gold: "features", wood: "prompts", stone: "hardening", mana: 
 
 const G = {
   state: "ready",          // ready | playing | won | lost
-  units: [], enemies: [], nodes: [], log: [],
+  units: [], enemies: [], nodes: [], log: [], mcps: [],
   res: { features: 0, prompts: 0, hardening: 0, logs: 0, trust: 60 },
+  skills: { attack: 0, gather: 0 },   // player-bought global upgrades
   phase: 0,
   castle: { tx: 5, ty: 4, hp: 100, maxhp: 100 },
   mine: { tx: 3, ty: 9 },
@@ -81,21 +82,29 @@ function drawTerrain() {
     const t = terrainAt(tx, ty);
     if (t === "w") tileBlock(tx, ty, PAL.waterTop, PAL.waterL, PAL.waterR);
     else if (t === "f") { tileBlock(tx, ty, PAL.forestTop, PAL.forestL, PAL.forestR); drawTree(tx, ty); }
-    else if (t === "r") tileBlock(tx, ty, PAL.roadTop, PAL.roadL, PAL.roadR);
+    else if (t === "r") { tileBlock(tx, ty, PAL.roadTop, PAL.roadL, PAL.roadR); drawBricks(tx, ty); }
     else tileBlock(tx, ty, PAL.grassTop, PAL.grassL, PAL.grassR);
   }
 }
+function drawBricks(tx, ty) {
+  const cx = isoX(tx, ty), cy = isoY(tx, ty);
+  for (let r = -1; r <= 1; r++) { px(cx - 9, cy + r * 5, 7, 1, "#6e5230"); px(cx + 2, cy + r * 5 + 2, 6, 1, "#6e5230"); }
+}
 function drawTree(tx, ty) {
   const cx = isoX(tx, ty), cy = isoY(tx, ty);
-  px(cx - 2, cy - 16, 4, 12, "#5a3a1c");
-  ctx.fillStyle = "#244a1e"; ctx.beginPath(); ctx.ellipse(cx, cy - 18, 10, 9, 0, 0, 7); ctx.fill();
-  ctx.fillStyle = "#2f5a26"; ctx.beginPath(); ctx.ellipse(cx - 2, cy - 20, 6, 5, 0, 0, 7); ctx.fill();
+  const t = (ox, oy, r) => {
+    px(cx + ox - 1, cy + oy - 2, 3, 9, "#5a3a1c");
+    ctx.fillStyle = "#244a1e"; ctx.beginPath(); ctx.ellipse(cx + ox, cy + oy - 6, r, r - 1, 0, 0, 7); ctx.fill();
+    ctx.fillStyle = "#2f5a26"; ctx.beginPath(); ctx.ellipse(cx + ox - 1, cy + oy - 8, r - 3, r - 4, 0, 0, 7); ctx.fill();
+  };
+  t(-5, 3, 6); t(5, 1, 7); t(0, -3, 8);   // a little cluster
 }
 function drawCastle() {
   const cx = isoX(G.castle.tx, G.castle.ty), cy = isoY(G.castle.tx, G.castle.ty);
   const lvl = G.phase; // taller with progress
   px(cx - 16, cy - 26 - lvl * 2, 32, 26 + lvl * 2, PAL.stoneDark);
   px(cx - 14, cy - 24 - lvl * 2, 28, 22 + lvl * 2, PAL.stone);
+  for (let i = -14; i <= 11; i += 6) px(cx + i, cy - 30 - lvl * 2, 4, 4, PAL.stoneDark); // crenellations
   px(cx - 18, cy - 34 - lvl * 2, 36, 10, PAL.blood);
   px(cx - 4, cy - 12, 8, 12, "#3a2a18");
   px(cx + 12, cy - 42 - lvl * 2, 2, 12, "#5a3a1c"); px(cx + 6, cy - 42 - lvl * 2, 6, 4, PAL.gold);
@@ -123,7 +132,7 @@ function drawHuman(a) {
   px(cx + 6, cy - 21, 1, 10, "#dfe6ee"); px(cx + 5, cy - 12, 3, 1, "#8a6a3a");
   ctx.fillStyle = a.color; ctx.font = "8px monospace"; ctx.textAlign = "center"; ctx.fillText(a.glyph, cx, cy - 25);
   bar(cx - 10, cy - 33, 20, a.hp / a.maxhp, PAL.forestBright);
-  if (G.selected === a) { ctx.strokeStyle = PAL.forestBright; ctx.lineWidth = 2; ctx.beginPath(); ctx.ellipse(cx, cy + 2, 13, 6, 0, 0, 7); ctx.stroke(); }
+  if (G.selected === a) { ctx.strokeStyle = "#7bff5a"; ctx.lineWidth = 1.5; ctx.strokeRect(cx - 9, cy - 26, 18, 30); }
 }
 // Orc threat — green, scaled by type size; boss = warlord.
 function drawOrc(e) {
@@ -150,6 +159,7 @@ function render() {
   sp.push({ d: G.castle.tx + G.castle.ty, f: drawCastle });
   sp.push({ d: G.mine.tx + G.mine.ty, f: () => { const cx = isoX(G.mine.tx, G.mine.ty), cy = isoY(G.mine.tx, G.mine.ty); px(cx - 14, cy - 18, 28, 18, "#4a4a4a"); px(cx - 12, cy - 16, 24, 14, "#6b6b6b"); px(cx - 5, cy - 10, 10, 10, "#14110d"); } });
   for (const n of G.nodes) sp.push({ d: n.tx + n.ty, f: () => drawNode(n) });
+  for (const m of G.mcps) sp.push({ d: m.tx + m.ty, f: () => drawMCP(m) });
   for (const a of G.units) sp.push({ d: a.tx + a.ty + 0.5, y: a.py, f: () => drawHuman(a) });
   for (const e of G.enemies) sp.push({ d: e.tx + e.ty + 0.5, y: e.py, f: () => drawOrc(e) });
   sp.sort((p, q) => (p.d - q.d) || ((p.y || 0) - (q.y || 0)));
@@ -233,14 +243,14 @@ function update(dt) {
     const threat = pickThreat(a, a.job === "defend" ? 1e9 : 260);
     if (threat) {
       if (moveToward(a, threat.tx, threat.ty, 1.8)) {
-        threat.hp -= 36 * dt;
+        threat.hp -= (36 + G.skills.attack * 12) * dt;
         if (threat.hp <= 0) killEnemy(threat);
       }
       continue;
     }
     if (NODE_RES[a.job]) {
       const n = nodeOf(a.job);
-      if (n && moveToward(a, n.tx, n.ty, 1.4)) G.res[NODE_RES[a.job]] += 6 * dt;
+      if (n && moveToward(a, n.tx, n.ty, 1.4)) G.res[NODE_RES[a.job]] += (6 + G.skills.gather * 3) * dt;
     } else if (a.job === "build") {
       if (moveToward(a, G.castle.tx, G.castle.ty + 1, 1.3)) G.castle.hp = Math.min(G.castle.maxhp, G.castle.hp + 4 * dt);
     } else { // release / idle → rally near castle
@@ -248,6 +258,9 @@ function update(dt) {
     }
   }
   G.units = G.units.filter((a) => a.hp > 0);
+
+  // MCP relays: passive observability — signal trickle + light castle repair
+  for (const m of G.mcps) { G.res.logs += 1.2 * dt; G.castle.hp = Math.min(G.castle.maxhp, G.castle.hp + 0.6 * dt); }
 
   // enemies march on the castle
   for (const e of G.enemies) {
@@ -371,6 +384,84 @@ function drawMinimap() {
   m.fillStyle = "#c0392b"; for (const e of G.enemies) m.fillRect(e.tx * cw, e.ty * ch, cw, ch);
 }
 
+/* ---- player control: recruit / MCP / skills -------------- */
+const ECONOMY = {
+  recruit: {
+    feature_worker: { features: 8 }, prompt_smith: { prompts: 8 },
+    hardening_engineer: { hardening: 8 }, incident_defender: { features: 6, hardening: 6 },
+    context_logger: { logs: 6 },
+  },
+  mcp: { logs: 12, hardening: 8 },
+  skill: { attack: { features: 10, hardening: 10 }, gather: { prompts: 10, logs: 6 } },
+};
+const RES_ICON = { features: "★", prompts: "✦", hardening: "⛨", logs: "≋" };
+const COMMANDS = [
+  { id: "feature_worker", label: "Feature Worker", glyph: "★", kind: "recruit" },
+  { id: "prompt_smith", label: "Prompt Smith", glyph: "✦", kind: "recruit" },
+  { id: "hardening_engineer", label: "Hardening Eng.", glyph: "⛨", kind: "recruit" },
+  { id: "incident_defender", label: "Defender", glyph: "⚔", kind: "recruit" },
+  { id: "mcp", label: "MCP relay", glyph: "⛁", kind: "mcp" },
+  { id: "attack", label: "+Attack", glyph: "⚒", kind: "skill" },
+  { id: "gather", label: "+Gather", glyph: "⛏", kind: "skill" },
+];
+function costFor(c) {
+  if (c.kind === "recruit") return ECONOMY.recruit[c.id];
+  if (c.kind === "mcp") return ECONOMY.mcp;
+  const base = ECONOMY.skill[c.id], lvl = G.skills[c.id], out = {};
+  for (const k in base) out[k] = base[k] * (lvl + 1);
+  return out;
+}
+function costStr(cost) { return Object.keys(cost).map((k) => Math.round(cost[k]) + (RES_ICON[k] || k)).join(" "); }
+function canAfford(cost) { return Object.keys(cost).every((k) => G.res[k] >= cost[k]); }
+function spend(cost) { for (const k in cost) G.res[k] -= cost[k]; }
+function addMCP() {
+  const around = [[1, 0], [-1, 0], [2, 0], [-1, 1], [2, 1], [0, 2]];
+  const used = new Set(G.mcps.map((m) => m.tx + "," + m.ty));
+  for (const o of around) { const tx = G.castle.tx + o[0], ty = G.castle.ty + o[1] + 1; if (walkable(tx, ty) && !used.has(tx + "," + ty)) { G.mcps.push({ tx, ty }); break; } }
+  logMsg("MCP relay online — observability up.");
+}
+function doCommand(c) {
+  if (G.state !== "playing") return;
+  const cost = costFor(c);
+  if (!canAfford(cost)) { logMsg("Not enough resources for " + c.label + "."); return; }
+  spend(cost); sfx("command");
+  if (c.kind === "recruit") { spawnUnit(c.id); logMsg("Recruited " + UNIT_TYPES[c.id].label + "."); }
+  else if (c.kind === "mcp") addMCP();
+  else { G.skills[c.id]++; logMsg("Upgraded " + c.label + " to L" + G.skills[c.id] + "."); }
+}
+function buildCommands() {
+  const box = document.getElementById("commands"); if (!box) return;
+  box.replaceChildren();
+  for (const c of COMMANDS) {
+    const b = el("button", "cmd"); b.dataset.id = c.id;
+    b.appendChild(el("span", "cmd-g", c.glyph));
+    b.appendChild(el("small", "cmd-l", c.label));
+    b.appendChild(el("span", "cmd-cost", costStr(costFor(c))));
+    b.addEventListener("click", () => doCommand(c));
+    box.appendChild(b);
+  }
+}
+function updateCommands() {
+  const box = document.getElementById("commands"); if (!box) return;
+  for (const c of COMMANDS) {
+    const b = box.querySelector('[data-id="' + c.id + '"]'); if (!b) continue;
+    const cost = costFor(c);
+    b.disabled = G.state !== "playing" || !canAfford(cost);
+    const cs = b.querySelector(".cmd-cost"); if (cs) cs.textContent = costStr(cost);
+  }
+}
+function drawMCP(m) {
+  const cx = isoX(m.tx, m.ty), cy = isoY(m.tx, m.ty);
+  px(cx - 5, cy - 18, 10, 18, "#33405e"); px(cx - 5, cy - 18, 10, 2, "#6fb3e0");
+  px(cx - 3, cy - 12, 6, 4, "#8fd0ff"); px(cx - 1, cy - 24, 2, 7, "#6fb3e0"); px(cx - 4, cy - 25, 8, 2, "#8fd0ff");
+}
+function toggleFullscreen() {
+  const elx = document.getElementById("stage"); if (!elx) return;
+  if (!document.fullscreenElement) { (elx.requestFullscreen || elx.webkitRequestFullscreen || (() => {})).call(elx); }
+  else if (document.exitFullscreen) document.exitFullscreen();
+  setTimeout(() => { resize(); render(); }, 120);
+}
+
 function loop(ts) {
   if (!G.last) G.last = ts;
   const dt = Math.min(0.05, (ts - G.last) / 1000); G.last = ts;
@@ -393,6 +484,7 @@ function syncPanels() {
   tr.style.color = G.res.trust >= 70 ? PAL.forestBright : G.res.trust < 40 ? PAL.blood : PAL.gold;
   $("#c-hp").textContent = Math.max(0, Math.round(G.castle.hp)) + "%";
   const wv = document.getElementById("r-wave"); if (wv) wv.textContent = G.mode === "survival" ? String(G.wave) : "—";
+  updateCommands();
   // timeline
   const tl = $("#timeline"); tl.replaceChildren();
   PHASES.forEach((p, i) => tl.appendChild(el("span", "phase" + (i <= G.phase ? " on" : ""), p.key)));
@@ -500,4 +592,6 @@ document.addEventListener("DOMContentLoaded", () => {
   if (mute) mute.addEventListener("click", () => { const on = window.AUDIO && window.AUDIO.toggle(); mute.textContent = on ? "🔊" : "🔇"; });
   renderLeaderboard(document.getElementById("lb-start"));
   loadOfficial();
+  buildCommands();
+  const fs = document.getElementById("fs"); if (fs) fs.addEventListener("click", toggleFullscreen);
 });

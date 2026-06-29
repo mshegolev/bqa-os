@@ -4,105 +4,120 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>BQA-OS · Agent Citadel</title>
-  <meta name="description" content="BQA-OS turns raw QA session chaos into reusable knowledge artifacts, agents, and workflows. A 2-week QA Memory Pilot for QA leads.">
+  <meta name="description" content="Upload a ZIP/JSON archive, decode it locally into agents, skills and workflows, download the result as a ZIP, and send your agents into battle. No backend, synthetic data.">
   <link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
   <link rel="stylesheet" href="assets/pixel.css">
   <style>
-    .hero { text-align: center; padding: 26px 0 8px; }
-    .hero .lead { font-size: 22px; max-width: 640px; margin: 0 auto 20px; color: var(--parchment); }
-    .actions { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+    .steps3 { display: grid; gap: 10px; grid-template-columns: 1fr; margin: 8px 0 18px; }
+    @media (min-width: 720px) { .steps3 { grid-template-columns: repeat(3, 1fr); } }
+    .step3 { background: rgba(0,0,0,.25); padding: 12px; box-shadow: inset 2px 2px 0 var(--bevel-light), inset -2px -2px 0 var(--bevel-dark); }
+    .step3 b { font-family: var(--font-display); font-size: 9px; color: var(--gold); display: block; margin-bottom: 6px; }
+    .step3 small { font-size: 16px; color: var(--parchment-dim); }
 
-    .banner {
-      margin: 26px 0; padding: 14px; text-align: center;
-      background: repeating-linear-gradient(45deg, rgba(242,193,78,.10) 0 8px, transparent 8px 16px);
-      border: var(--px) solid var(--stone-600);
-      box-shadow: inset 2px 2px 0 var(--bevel-light), inset -2px -2px 0 var(--bevel-dark);
-      font-size: 19px;
-    }
+    .dropzone { border: var(--px) dashed var(--stone-500); background: repeating-linear-gradient(45deg, rgba(0,0,0,.18) 0 6px, transparent 6px 12px);
+      padding: 34px 18px; text-align: center; cursor: pointer; transition: background .08s steps(2); }
+    .dropzone .big { font-family: var(--font-display); font-size: 12px; color: var(--gold); margin-bottom: 10px; }
+    .dropzone.over { background: rgba(123,196,90,.18); border-color: var(--forest-bright); }
+    .controls { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 16px; }
+    #status { font-size: 18px; margin-top: 14px; color: var(--parchment-dim); background: var(--stone-900); padding: 8px 10px; box-shadow: inset 2px 2px 0 var(--bevel-dark); word-break: break-word; }
+    .legend { font-size: 15px; color: var(--stone-500); margin-top: 10px; }
 
-    .steps { display: grid; gap: 12px; grid-template-columns: 1fr; margin-top: 6px; }
-    @media (min-width: 640px) { .steps { grid-template-columns: 1fr 1fr; } }
-    @media (min-width: 980px) { .steps { grid-template-columns: repeat(5, 1fr); } }
-    .step { background: rgba(0,0,0,.25); padding: 12px; box-shadow: inset 2px 2px 0 var(--bevel-light), inset -2px -2px 0 var(--bevel-dark); }
-    .step span { font-family: var(--font-display); font-size: 14px; color: var(--gold); display: block; }
-    .step strong { display: block; font-size: 20px; color: var(--bone); margin: 8px 0 4px; }
-    .step p { font-size: 16px; margin: 0; }
+    .deck { display: grid; grid-template-columns: 1fr; gap: 18px; }
+    @media (min-width: 880px) { .deck { grid-template-columns: 1.05fr 1fr; align-items: start; } }
+    .units { display: grid; grid-template-columns: 1fr; gap: 10px; }
+    @media (min-width: 520px) { .units { grid-template-columns: 1fr 1fr; } }
+    .unit { display: flex; gap: 10px; align-items: center; background: rgba(0,0,0,.22); padding: 8px; box-shadow: inset 2px 2px 0 var(--bevel-light), inset -2px -2px 0 var(--bevel-dark); }
+    .unit-portrait { width: 44px; height: 44px; flex: 0 0 44px; display: grid; place-items: center; background: linear-gradient(180deg, var(--unit, var(--gold)), rgba(0,0,0,.5)); box-shadow: inset -3px -3px 0 var(--bevel-dark), inset 3px 3px 0 rgba(255,255,255,.25); font-size: 22px; color: var(--stone-900); }
+    .unit-body { flex: 1; min-width: 0; }
+    .unit-body b { font-family: var(--font-display); font-size: 9px; color: var(--bone); display: block; word-break: break-all; }
+    .unit-role { font-size: 16px; color: var(--parchment-dim); margin: 2px 0 6px; }
+    ul.loot, ul.recs { list-style: none; padding: 0; margin: 0; }
+    ul.loot li { padding: 6px 4px; border-bottom: 2px solid rgba(0,0,0,.3); font-size: 18px; }
+    ul.recs li { padding: 6px 0 6px 18px; position: relative; font-size: 18px; color: var(--parchment); }
+    ul.recs li::before { content: "»"; position: absolute; left: 0; color: var(--forest-bright); }
+    #results { display: none; }
+    #to-field { font-size: 11px; }
 
-    .arts { list-style: none; padding: 0; margin: 0; display: grid; gap: 8px; grid-template-columns: 1fr; }
-    @media (min-width: 560px) { .arts { grid-template-columns: 1fr 1fr; } }
-    .arts li { padding: 8px 10px; background: rgba(0,0,0,.25); font-size: 18px; box-shadow: inset 2px 2px 0 var(--bevel-dark); }
-    .arts li::before { content: "◆ "; color: var(--forest-bright); }
-
-    .who { display: grid; gap: 14px; grid-template-columns: 1fr; }
-    @media (min-width: 760px) { .who { grid-template-columns: 1fr 1fr; } }
+    details.help { margin-top: 18px; background: rgba(0,0,0,.2); padding: 8px 12px; box-shadow: inset 2px 2px 0 var(--bevel-dark); }
+    details.help summary { cursor: pointer; font-family: var(--font-display); font-size: 9px; color: var(--gold); }
+    details.help pre { background: var(--stone-900); color: var(--forest-bright); padding: 12px; overflow-x: auto; font-size: 15px; }
+    .domains { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0; }
   </style>
 </head>
 <body>
   <div class="wrap">
     <div class="topbar">
-      <div class="brand"><div class="sigil pixel"></div><b>BQA-OS</b></div>
+      <div class="brand"><div class="sigil pixel"></div><b>BQA-OS · Agent Citadel</b></div>
       <nav class="nav">
-        <a class="btn secondary" href="upload.html">Decoder</a>
-        <a class="btn secondary" href="game.html">War</a>
-        <a class="btn secondary" href="map.html">War Map</a>
+        <a class="btn" href="game.html">⚔ Battle</a>
         <a class="btn secondary" href="https://github.com/mshegolev/bqa-os">Repo</a>
       </nav>
     </div>
 
-    <section class="hero">
-      <p class="eyebrow">BQA-OS · 2-week QA Memory Pilot</p>
-      <h1>Agent Citadel</h1>
-      <p class="lead">Turn raw QA session chaos into reusable knowledge artifacts, agents, and workflows — a QA operating system mustered from your own sessions.</p>
-      <div class="actions">
-        <a class="btn" href="upload.html">▶ Try the decoder</a>
-        <a class="btn secondary" href="map.html">See the war map</a>
-      </div>
-    </section>
+    <p class="eyebrow">Runs entirely in your browser · synthetic data</p>
+    <h1>Decode your agents, then fight</h1>
 
-    <div class="banner">For QA Leads &amp; QA Automation Leads in B2B SaaS, fintech &amp; data-heavy platforms. Local-first. Synthetic demo. No backend.</div>
+    <div class="steps3">
+      <div class="step3"><b>1 · Upload</b><small>Drop a <code>.zip</code> or <code>.json</code> archive of your QA sessions.</small></div>
+      <div class="step3"><b>2 · Get agents</b><small>It decodes locally into agents, skills &amp; workflows — download the result <code>.zip</code>.</small></div>
+      <div class="step3"><b>3 · Battle</b><small>Send your agents into the war against the orc bugs &amp; CVEs.</small></div>
+    </div>
 
-    <section class="panel">
-      <div class="panel-title">⚑ From sessions to a QA operating system</div>
-      <div class="steps">
-        <article class="step"><span>01</span><strong>Session Mine</strong><p>Collect sanitized QA notes and runtime sessions.</p></article>
-        <article class="step"><span>02</span><strong>Sanitizer Gate</strong><p>Keep private data out of public artifacts.</p></article>
-        <article class="step"><span>03</span><strong>Knowledge Forge</strong><p>Create reusable QA patterns and prompts.</p></article>
-        <article class="step"><span>04</span><strong>Agent Hall</strong><p>Muster project-specific QA agents.</p></article>
-        <article class="step"><span>05</span><strong>Workflow Command</strong><p>Package repeatable API, GraphQL, ETL &amp; DQ workflows.</p></article>
-      </div>
-    </section>
-
-    <section class="panel">
-      <div class="panel-title">◆ Target artifacts</div>
-      <ul class="arts">
-        <li>etl_patterns.yaml</li>
-        <li>graphql_patterns.yaml</li>
-        <li>api_patterns.yaml</li>
-        <li>data_quality_patterns.yaml</li>
-        <li>common_bugs.yaml</li>
-        <li>successful_prompts.yaml</li>
-        <li>project_profile.yaml</li>
-      </ul>
-    </section>
-
-    <section class="panel">
-      <div class="panel-title">♛ Start a pilot in 60 seconds</div>
-      <div class="who">
-        <div>
-          <h3>What you bring</h3>
-          <p>Sanitized QA sessions, logs, and notes — synthetic or marked. Nothing private leaves your machine in the demo.</p>
+    <div class="deck">
+      <section class="panel">
+        <div class="panel-title">◆ 1 · Upload archive</div>
+        <div class="dropzone" id="drop">
+          <div class="big">⇪ DROP ZIP OR JSON</div>
+          <p>your QA session archive — or load the demo</p>
+          <input type="file" id="file" accept=".zip,.json,application/zip,application/json" hidden>
         </div>
-        <div>
-          <h3>What you get</h3>
-          <p>Generated agents, workflows, knowledge specs and recommendations — downloadable as a single output bundle.</p>
+        <div class="controls">
+          <button class="btn" id="pick">Choose file</button>
+          <button class="btn secondary" id="demo">Load demo</button>
         </div>
-      </div>
-      <div class="actions" style="justify-content:flex-start;margin-top:14px">
-        <a class="btn" href="upload.html">▶ Launch the decoder</a>
-      </div>
-    </section>
+        <div id="status" role="status" aria-live="polite">&gt; awaiting archive.</div>
+        <p class="legend">Local-first. No real logs, secrets or customer data leave this page.</p>
+      </section>
+
+      <section class="panel" id="empty">
+        <div class="panel-title">⚑ What you get</div>
+        <ul class="recs">
+          <li>Agents mustered from your session domains</li>
+          <li>Knowledge specs (the MVP artifact set)</li>
+          <li>Reusable workflows</li>
+          <li>Recommendations — packaged as a downloadable ZIP</li>
+        </ul>
+        <p class="legend">Load the demo to see it, then hit Battle. →</p>
+      </section>
+
+      <section id="results">
+        <section class="panel">
+          <div class="panel-title">⚔ 2 · Your agents <span class="chip">from <span id="source-name">—</span></span></div>
+          <div class="units" id="agents"></div>
+          <div class="controls">
+            <button class="btn" id="download" disabled>⬇ Download agents.zip</button>
+            <a class="btn" id="to-field" href="game.html" style="display:none">⚔ 3 · Send agents to battle</a>
+          </div>
+        </section>
+        <section class="panel"><div class="panel-title">⚑ Workflows</div><ul class="loot" id="workflows"></ul></section>
+        <section class="panel"><div class="panel-title">◆ Knowledge specs</div><ul class="loot" id="specs"></ul></section>
+        <section class="panel"><div class="panel-title">✦ Recommendations</div><ul class="recs" id="recs"></ul></section>
+      </section>
+    </div>
+
+    <details class="help">
+      <summary>Archive format (JSON, or a ZIP containing it)</summary>
+      <p>A <code>sessions</code> array; each session has a <code>domain</code> (one of: <span class="domains"><span class="chip">etl</span><span class="chip">graphql</span><span class="chip">api</span><span class="chip">data_quality</span><span class="chip">bugs</span><span class="chip">prompts</span></span>) and some <code>text</code>.</p>
+<pre>{ "sessions": [
+  { "domain": "etl", "text": "airflow dag failure, reconciliation on parquet" },
+  { "domain": "api", "text": "rest endpoint wrong http status, contract test" }
+] }</pre>
+      <p><a href="fixtures/demo-archive.json" download>⬇ Download a template archive</a> · <button class="btn secondary" id="demo2">Try the demo</button></p>
+    </details>
 
     <footer class="foot">BQA-OS · synthetic demo · forged in pixels</footer>
   </div>
+
+  <script src="assets/upload.js"></script>
 </body>
 </html>
