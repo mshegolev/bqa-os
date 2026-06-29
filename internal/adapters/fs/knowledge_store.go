@@ -12,6 +12,7 @@ import (
 type KnowledgeStore struct {
 	SessionBaseDir string
 	KnowledgeDir   string
+	ETLPackDir     string
 }
 
 func (s KnowledgeStore) LoadSessionIndex(ctx context.Context) (ports.SessionIndex, error) {
@@ -84,6 +85,19 @@ func (s KnowledgeStore) WriteBQAArtifact(ctx context.Context, relativePath strin
 	return os.WriteFile(path, []byte(content), 0o600)
 }
 
+func (s KnowledgeStore) WriteETLAgentPackArtifact(ctx context.Context, relativePath string, content string) error {
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	default:
+	}
+	path := filepath.Join(s.etlPackDir(), filepath.Clean(relativePath))
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		return err
+	}
+	return os.WriteFile(path, []byte(content), 0o600)
+}
+
 func (s KnowledgeStore) sessionBase() string {
 	if s.SessionBaseDir == "" {
 		return ".bqa/input/sessions"
@@ -96,4 +110,11 @@ func (s KnowledgeStore) knowledgeDir() string {
 		return ".bqa/knowledge"
 	}
 	return s.KnowledgeDir
+}
+
+func (s KnowledgeStore) etlPackDir() string {
+	if s.ETLPackDir == "" {
+		return filepath.Join(filepath.Dir(s.knowledgeDir()), "output", "etl-agent-pack")
+	}
+	return s.ETLPackDir
 }

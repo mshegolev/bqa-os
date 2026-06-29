@@ -16,6 +16,12 @@ For internal pilot validation, generate the Monday sales package with:
 bqa build --sales-package
 ```
 
+To generate a local ETL QA Agent Pack for Codex and Claude Code, run:
+
+```bash
+bqa etl-agent-pack
+```
+
 ## Inputs
 
 `bqa build` expects normalized sessions created by `bqa ingest`:
@@ -90,6 +96,30 @@ These files are for the 2-week QA Memory Pilot offer: internal validation first,
 then external paid pilot discovery. Use synthetic artifacts for public demos and
 sanitized artifacts only for customer pilots. Do not include private repo data,
 real session logs, secrets, or customer records in public outputs.
+
+`bqa etl-agent-pack` reads `.bqa/knowledge/` and normalized sessions when they
+exist, uses aggregate counts only, and writes a synthetic-safe pack into:
+
+```text
+.bqa/output/etl-agent-pack/
+```
+
+Generated ETL pack files:
+
+```text
+statistics/summary.md
+agents/codex-etl-qa-agent.md
+agents/claude-code-etl-qa-agent.md
+workflows/etl-regression-workflow.md
+workflows/data-reconciliation-workflow.md
+workflows/data-quality-validation-workflow.md
+specs/etl-test-spec-template.md
+specs/source-to-target-mapping-review-checklist.md
+prompts/codex-etl-qa-agent-prompt.md
+prompts/claude-code-etl-qa-agent-prompt.md
+examples/synthetic-etl-reconciliation-example.md
+README_NEXT_STEPS.md
+```
 
 ## Current extraction strategy
 

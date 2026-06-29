@@ -125,6 +125,7 @@ bqa discover
 bqa ingest
 bqa build
 bqa build --sales-package
+bqa etl-agent-pack
 bqa run "Test DATA-12345"
 bqa team pipeline --issue-json issue.json --issue-number 123
 bqa runtime detect
@@ -158,6 +159,32 @@ Use synthetic artifacts for public demos and sanitized artifacts only for pilot
 customers. Do not place private repo data, real session logs, customer records,
 or secrets in public artifacts.
 
+## ETL QA Agent Pack
+
+Generate a copy-paste-ready local ETL QA Agent Pack for Codex and Claude Code:
+
+```bash
+bqa etl-agent-pack
+```
+
+The command reads `.bqa/knowledge/` and `.bqa/input/sessions/` when available,
+uses only aggregate statistics from local inputs, and writes synthetic-safe pack
+files under:
+
+```text
+.bqa/output/etl-agent-pack/
+```
+
+Generated pack directories:
+
+- `statistics/`
+- `agents/`
+- `workflows/`
+- `specs/`
+- `prompts/`
+- `examples/`
+- `README_NEXT_STEPS.md`
+
 ## Current implementation status
 
 Implemented:
@@ -169,6 +196,7 @@ Implemented:
 - early one-line installer through `install.sh`
 - GitHub Pages placeholder for BQA-OS Agent Citadel
 - optional Monday sales package generation for internal pilot validation
+- local ETL QA Agent Pack generation for Codex and Claude Code
 
 Planned:
 

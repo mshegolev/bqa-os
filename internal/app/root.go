@@ -19,6 +19,7 @@ func Execute() {
 	rootCmd.AddCommand(ingestCmd())
 	rootCmd.AddCommand(ingest2Cmd())
 	rootCmd.AddCommand(buildCmd())
+	rootCmd.AddCommand(etlAgentPackCmd())
 	rootCmd.AddCommand(demoCmd())
 	rootCmd.AddCommand(runCmd())
 	rootCmd.AddCommand(brainCmd())
