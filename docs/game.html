@@ -61,7 +61,11 @@
     .cmd:hover:not(:disabled) { filter: brightness(1.12); }
     .cmd:active:not(:disabled) { box-shadow: inset 2px 2px 0 var(--bevel-dark), inset -2px -2px 0 var(--bevel-light); }
     .cmd:disabled { opacity: .42; cursor: not-allowed; }
-    .cmd-g { font-size: 16px; color: var(--gold); } .cmd-l { font-size: 15px; } .cmd-cost { font-family: var(--font-body); font-size: 13px; color: var(--forest-bright); }
+    .cmd.locked { opacity: .72; background: linear-gradient(180deg, var(--stone-700), var(--stone-800)); color: var(--stone-500); }
+    .cmd.locked:disabled { opacity: .72; }
+    .cmd.locked .cmd-g, .cmd.locked .cmd-l { color: var(--stone-500); }
+    .cmd.locked .cmd-cost { color: var(--parchment-dim); font-size: 12px; line-height: 1.05; min-height: 24px; }
+    .cmd-g { font-size: 16px; color: var(--gold); } .cmd-l { font-size: 15px; } .cmd-cost { font-family: var(--font-body); font-size: 13px; color: var(--forest-bright); text-align: center; }
 
     #stage:fullscreen { display: grid; place-content: center; background: #14110d; padding: 0; width: 100vw; height: 100vh; }
     #stage:fullscreen canvas#field { height: 94vh; width: auto; }

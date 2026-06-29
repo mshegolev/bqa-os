@@ -43,6 +43,7 @@ const G = {
   clock: 0, demoIdx: 0, done: false, grace: 9,
   warlordSeen: false, warlordDead: false,
   mode: "demo",            // demo | survival
+  demoRecruitUnlocks: null,
   wave: 0, waveGap: 0, wavesSurvived: 0, recorded: false,
   dt: 0, last: 0,
 };
@@ -204,6 +205,8 @@ function applyLog(ev) {
   else if (spawn && spawn.startsWith("unit:")) spawnUnit(spawn.slice(5));
   else if (spawn && spawn.startsWith("enemy:")) spawnEnemy(spawn.slice(6));
   logMsg(ev.msg, ev.severity);
+  const unlocked = unlockDemoRecruitsForEvent(ev);
+  if (unlocked) logMsg("Unlocked recruit: " + UNIT_TYPES[unlocked].label + ".");
 }
 
 /* ---- simulation ------------------------------------------ */
@@ -486,6 +489,42 @@ const COMMANDS = [
   { id: "gather", label: "+Gather", glyph: "⛏", kind: "skill" },
   { id: "clear_context", label: "Clear Context", glyph: "✺", kind: "spell" },
 ];
+const DEMO_RECRUIT_UNLOCK_ORDER = ["feature_worker", "prompt_smith", "hardening_engineer", "incident_defender", "sentinel_archer"];
+const DEMO_RECRUIT_UNLOCK_BY_EVENT = {
+  feature_detected: "prompt_smith",
+  prompt_loaded: "hardening_engineer",
+  hardening_rule_added: "incident_defender",
+  incident_started: "sentinel_archer",
+};
+const DEMO_RECRUIT_UNLOCK_HINTS = {
+  prompt_smith: "After first feature",
+  hardening_engineer: "After prompt smithing",
+  incident_defender: "After hardening",
+  sentinel_archer: "When incidents start",
+};
+function isDemoRecruit(id) { return DEMO_RECRUIT_UNLOCK_ORDER.includes(id); }
+function resetDemoRecruitUnlocks() { G.demoRecruitUnlocks = new Set([DEMO_RECRUIT_UNLOCK_ORDER[0]]); }
+function unlockDemoRecruit(id) {
+  const idx = DEMO_RECRUIT_UNLOCK_ORDER.indexOf(id);
+  if (idx < 0) return null;
+  if (!G.demoRecruitUnlocks) resetDemoRecruitUnlocks();
+  const already = G.demoRecruitUnlocks.has(id);
+  for (let i = 0; i <= idx; i++) G.demoRecruitUnlocks.add(DEMO_RECRUIT_UNLOCK_ORDER[i]);
+  return already ? null : id;
+}
+function unlockDemoRecruitsForEvent(ev) {
+  if (G.mode !== "demo" || !ev) return null;
+  return unlockDemoRecruit(DEMO_RECRUIT_UNLOCK_BY_EVENT[ev.type]);
+}
+function isDemoRecruitLocked(id) {
+  return G.mode === "demo" && isDemoRecruit(id) && !!G.demoRecruitUnlocks && !G.demoRecruitUnlocks.has(id);
+}
+function demoRecruitState(id) {
+  return { id, locked: isDemoRecruitLocked(id), hint: DEMO_RECRUIT_UNLOCK_HINTS[id] || "" };
+}
+function demoRecruitSnapshot() { return DEMO_RECRUIT_UNLOCK_ORDER.map((id) => demoRecruitState(id)); }
+function isCommandLocked(c) { return c.kind === "recruit" && isDemoRecruitLocked(c.id); }
+function commandLockHint(c) { return isCommandLocked(c) ? (DEMO_RECRUIT_UNLOCK_HINTS[c.id] || "Unlocks later") : ""; }
 // Costs rise the more you already have, so growth is steady, never trivial,
 // and the challenge scales proportionally with your army.
 function costFor(c) {
@@ -536,8 +575,13 @@ function updateCommands() {
   for (const c of COMMANDS) {
     const b = box.querySelector('[data-id="' + c.id + '"]'); if (!b) continue;
     const cost = costFor(c);
-    b.disabled = G.state !== "playing" || !canAfford(cost);
+    const locked = isCommandLocked(c);
+    b.disabled = G.state !== "playing" || locked || !canAfford(cost);
+    b.classList.toggle("locked", locked);
+    b.title = locked ? commandLockHint(c) : "";
+    const glyph = b.querySelector(".cmd-g"); if (glyph) glyph.textContent = locked ? "🔒" : c.glyph;
     const cs = b.querySelector(".cmd-cost"); if (cs) cs.textContent = costStr(cost);
+    if (cs && locked) cs.textContent = "🔒 " + commandLockHint(c);
   }
 }
 function drawMCP(m) {
@@ -714,12 +758,12 @@ function begin() {
   syncPanels(); requestAnimationFrame(loop);
 }
 function startDemo(seedArchive) {
-  G.mode = "demo"; placeNodes(); seedAgents(seedArchive);
+  G.mode = "demo"; resetDemoRecruitUnlocks(); placeNodes(); seedAgents(seedArchive);
   logMsg("Builder Agent raised the first wall of architecture.");
   begin();
 }
 function startSurvival(seedArchive) {
-  G.mode = "survival"; placeNodes();
+  G.mode = "survival"; G.demoRecruitUnlocks = null; placeNodes();
   seedAgents(seedArchive);
   spawnUnit("incident_defender"); spawnUnit("incident_defender");
   G.wave = 0; G.waveGap = 1.5; G.wavesSurvived = 0; G.recorded = false;
