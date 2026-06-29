@@ -2,7 +2,9 @@ package app
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"os"
 
 	fsadapter "github.com/mshegolev/bqa-os/internal/adapters/fs"
 	coreartifacts "github.com/mshegolev/bqa-os/internal/core/artifacts"
@@ -25,7 +27,7 @@ func buildCmd() *cobra.Command {
 			knowledgeUC := coreknowledge.UseCase{Reader: store, Writer: store, OutputDir: knowledgeDir}
 			knowledgeResult, err := knowledgeUC.Run(ctx)
 			if err != nil {
-				return err
+				return buildInputError(sessionBaseDir, err)
 			}
 
 			artifactUC := coreartifacts.UseCase{Writer: store, IncludeSalesPackage: includeSalesPackage}
@@ -52,4 +54,11 @@ func buildCmd() *cobra.Command {
 	cmd.Flags().StringVar(&knowledgeDir, "knowledge-dir", ".bqa/knowledge", "knowledge output directory")
 	cmd.Flags().BoolVar(&includeSalesPackage, "sales-package", false, "also generate internal pilot sales package artifacts")
 	return cmd
+}
+
+func buildInputError(sessionBaseDir string, err error) error {
+	if !errors.Is(err, os.ErrNotExist) {
+		return err
+	}
+	return fmt.Errorf("missing session index at %s/index.json; run: bqa discover -> bqa ingest2 -> bqa build: %w", sessionBaseDir, err)
 }

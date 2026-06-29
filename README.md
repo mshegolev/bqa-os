@@ -123,6 +123,7 @@ Test DATA-12345.
 bqa init
 bqa discover
 bqa ingest
+bqa ingest2
 bqa build
 bqa build --sales-package
 bqa run "Test DATA-12345"
@@ -168,6 +169,7 @@ Implemented:
 - BQA Master Agent context generation for runtime adapters
 - early one-line installer through `install.sh`
 - GitHub Pages placeholder for BQA-OS Agent Citadel
+- synthetic session ingestion through `bqa ingest2`
 - optional Monday sales package generation for internal pilot validation
 
 Planned:

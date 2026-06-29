@@ -72,7 +72,7 @@ func etlWorkflow() string {
 }
 
 func sessionWorkflow() string {
-	return "# Session Knowledge Workflow\n\n1. Run `bqa discover`.\n2. Run `bqa ingest`.\n3. Run `bqa build`.\n4. Review generated knowledge, skills, agents, and workflows.\n5. Sanitize before syncing reusable knowledge to Brain.\n"
+	return "# Session Knowledge Workflow\n\n1. Run `bqa discover`.\n2. Run `bqa ingest2`.\n3. Run `bqa build`.\n4. Review generated knowledge, skills, agents, and workflows.\n5. Sanitize before syncing reusable knowledge to Brain.\n"
 }
 
 func pilotOfferOnePager() string {

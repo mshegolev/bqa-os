@@ -54,6 +54,28 @@ func TestBuildCmdPrintsSalesGeneratedDirWhenEnabled(t *testing.T) {
 	}
 }
 
+func TestBuildCmdMissingSessionIndexPointsToIngest2(t *testing.T) {
+	tmp := t.TempDir()
+
+	cmd := buildCmd()
+	var out bytes.Buffer
+	cmd.SetOut(&out)
+	cmd.SetErr(&out)
+	cmd.SetArgs([]string{
+		"--sessions", filepath.Join(tmp, "sessions"),
+		"--knowledge-dir", filepath.Join(tmp, ".bqa", "knowledge"),
+	})
+
+	err := cmd.Execute()
+	if err == nil {
+		t.Fatalf("Execute should fail when session index is missing")
+	}
+
+	if !strings.Contains(err.Error(), "bqa discover -> bqa ingest2 -> bqa build") {
+		t.Fatalf("missing-index error should point to ingest2 workflow, got %q", err.Error())
+	}
+}
+
 func writeSyntheticSessionFixture(t *testing.T, tmp string) string {
 	t.Helper()
 

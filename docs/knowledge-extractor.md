@@ -6,7 +6,7 @@ The Knowledge Extractor is the first BQA-OS build stage that turns normalized AI
 
 ```bash
 bqa discover
-bqa ingest
+bqa ingest2
 bqa build
 ```
 
@@ -18,7 +18,7 @@ bqa build --sales-package
 
 ## Inputs
 
-`bqa build` expects normalized sessions created by `bqa ingest`:
+`bqa build` expects normalized sessions created by `bqa ingest2`:
 
 ```text
 .bqa/input/sessions/index.json

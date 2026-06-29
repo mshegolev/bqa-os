@@ -35,6 +35,9 @@ func TestUseCaseGeneratesStarterArtifacts(t *testing.T) {
 	if !strings.Contains(writer.files["workflows/session-knowledge-workflow.md"], "bqa build") {
 		t.Fatalf("missing session workflow artifact")
 	}
+	if !strings.Contains(writer.files["workflows/session-knowledge-workflow.md"], "bqa ingest2") {
+		t.Fatalf("session workflow should use bqa ingest2, got %s", writer.files["workflows/session-knowledge-workflow.md"])
+	}
 	if !strings.Contains(writer.files["registry/index.yaml"], "registry:") {
 		t.Fatalf("missing registry index artifact")
 	}
