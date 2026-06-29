@@ -21,6 +21,7 @@ func Execute() {
 	rootCmd.AddCommand(buildCmd())
 	rootCmd.AddCommand(demoCmd())
 	rootCmd.AddCommand(runCmd())
+	rootCmd.AddCommand(teamCmd())
 	rootCmd.AddCommand(brainCmd())
 	rootCmd.AddCommand(sanitizeCmd())
 	rootCmd.AddCommand(versionCmd())

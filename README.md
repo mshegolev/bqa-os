@@ -125,12 +125,15 @@ bqa discover
 bqa ingest
 bqa build
 bqa run "Test DATA-12345"
+bqa team pipeline --issue-json issue.json --issue-number 27 --repo mshegolev/bqa-os
 bqa runtime detect
 bqa codex
 bqa claude
 bqa opencode
 bqa doctor
 ```
+
+`bqa team pipeline` is a dry-run planner for the Codex Team Pipeline MVP. Feed it a GitHub issue snapshot, for example one created with `gh issue view 27 --repo mshegolev/bqa-os --json number,title,body,labels > issue.json`, and it prints the workflow stages, label transitions, Codex role actions, QA verification, and QA bug-issue path without mutating GitHub.
 
 ## Current implementation status
 
@@ -140,6 +143,7 @@ Implemented:
 - project-local `.bqa` workspace initialization
 - runtime detection for Codex, Claude Code, and OpenCode
 - BQA Master Agent context generation for runtime adapters
+- dry-run Codex team pipeline planning from GitHub issue snapshots
 - early one-line installer through `install.sh`
 - GitHub Pages placeholder for BQA-OS Agent Citadel
 
