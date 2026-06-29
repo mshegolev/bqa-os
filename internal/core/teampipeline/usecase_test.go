@@ -48,6 +48,38 @@ func TestUseCaseRoutesReadyQAStateToQAVerification(t *testing.T) {
 	}
 }
 
+func TestUseCaseTreatsBlockedLabelAsHighestPriorityState(t *testing.T) {
+	issue := teamIssueWithLabels(27, "Blocked workflow task", "bqa:blocked", "bqa:arch-approved", "bqa:ready-dev", "bqa:codex-team")
+	uc := UseCase{IssueSource: fakeIssueSource{issue: issue}}
+
+	plan, err := uc.Run(context.Background(), ports.TeamIssueRef{Repo: "mshegolev/bqa-os", Number: 27}, Options{
+		SelectedSubagent: "go-cli-implementer",
+	})
+	if err != nil {
+		t.Fatalf("Run returned error: %v", err)
+	}
+
+	if plan.CurrentState != "blocked" {
+		t.Fatalf("expected blocked state, got %q", plan.CurrentState)
+	}
+	assertStage(t, plan, "development", "blocked")
+	assertStage(t, plan, "qa", "blocked")
+	assertStage(t, plan, "business-acceptance", "blocked")
+	if !hasWarning(plan, "bqa:blocked") {
+		t.Fatalf("expected blocked warning, got %#v", plan.Warnings)
+	}
+	if hasAction(plan, "run-role", "Developer") || hasAction(plan, "run-role", "QA") {
+		t.Fatalf("blocked issue must not plan developer or QA role actions, got %#v", plan.Actions)
+	}
+	action := findAction(plan, "resolve-blocker")
+	if action == nil {
+		t.Fatalf("expected blocker resolution action, got %#v", plan.Actions)
+	}
+	if !contains(action.RemoveLabels, "bqa:blocked") {
+		t.Fatalf("expected blocker resolution to remove bqa:blocked after resolution, got %#v", action.RemoveLabels)
+	}
+}
+
 func TestUseCaseRoutesQAFailedStateBackToDevelopment(t *testing.T) {
 	issue := teamIssueWithLabels(76, "QA failed bug", "bqa:ready-dev", "bqa:qa-failed", "bqa:bug")
 	uc := UseCase{IssueSource: fakeIssueSource{issue: issue}}
@@ -170,6 +202,15 @@ func hasVerification(plan Plan, role string, command string) bool {
 	}
 	for _, actual := range action.VerificationCommands {
 		if actual == command {
+			return true
+		}
+	}
+	return false
+}
+
+func hasWarning(plan Plan, expected string) bool {
+	for _, warning := range plan.Warnings {
+		if strings.Contains(warning, expected) {
 			return true
 		}
 	}
