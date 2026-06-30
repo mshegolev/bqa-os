@@ -6,6 +6,17 @@ BQA-OS is designed to connect QA knowledge, agents, skills, workflows, guardrail
 
 ![Citadel: The Release War — gameplay preview](docs/assets/preview.gif)
 
+## Install the `bqa` CLI
+
+The steps below use the `bqa` CLI (for `sanitize`, `codex`, etc.). Install it first:
+
+```bash
+brew install go   # macOS; needs a Go toolchain
+curl -fsSL https://raw.githubusercontent.com/mshegolev/bqa-os/main/install.sh | bash
+export PATH="$HOME/.local/bin:$PATH"
+bqa --help        # verify
+```
+
 ## This is not just a game
 
 It turns your **real work sessions into reusable AI agents** you can actually use —
