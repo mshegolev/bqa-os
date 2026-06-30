@@ -3,12 +3,16 @@ package app
 import (
 	"context"
 	"fmt"
+	"os"
+	"path/filepath"
 
 	fsadapter "github.com/mshegolev/bqa-os/internal/adapters/fs"
 	"github.com/mshegolev/bqa-os/internal/adapters/runtimebin"
 	coreruntime "github.com/mshegolev/bqa-os/internal/core/runtime"
 	"github.com/spf13/cobra"
 )
+
+const masterContextRelPath = ".bqa/prompts/bqa-master-context.md"
 
 func newRuntimeUseCase() coreruntime.UseCase {
 	return coreruntime.UseCase{
@@ -22,9 +26,15 @@ func runtimeContextCmd(name string) *cobra.Command {
 		Use:   name,
 		Short: fmt.Sprintf("Prepare BQA Master Agent context for %s", runtimeLabel(name)),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			res, err := newRuntimeUseCase().Prepare(context.Background(), name)
+			ctx := context.Background()
+			res, err := newRuntimeUseCase().Prepare(ctx, name)
 			if err != nil {
 				return err
+			}
+			if name == "codex" {
+				if err := augmentCodexContext(ctx, res.ContextPath); err != nil {
+					return err
+				}
 			}
 			out := cmd.OutOrStdout()
 			fmt.Fprintf(out, "BQA context generated: %s\n", res.ContextPath)
@@ -37,6 +47,23 @@ func runtimeContextCmd(name string) *cobra.Command {
 			return nil
 		},
 	}
+}
+
+// augmentCodexContext appends the project-specific QA knowledge section to the
+// already-written master context for the codex runtime. It reads the knowledge
+// artifacts produced by `bqa build` via the existing KnowledgeStore reader and
+// degrades gracefully (a "run bqa build" hint) when none are present.
+func augmentCodexContext(ctx context.Context, contextPath string) error {
+	base, err := os.ReadFile(filepath.Clean(contextPath))
+	if err != nil {
+		return err
+	}
+
+	reader := fsadapter.KnowledgeStore{}
+	section, _ := codexKnowledgeSection(ctx, reader)
+
+	writer := fsadapter.RuntimeStore{TargetDir: "."}
+	return writer.WriteRuntimeArtifact(ctx, masterContextRelPath, string(base)+section)
 }
 
 func runtimeLabel(name string) string {
