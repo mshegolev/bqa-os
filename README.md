@@ -6,6 +6,35 @@ BQA-OS is designed to connect QA knowledge, agents, skills, workflows, guardrail
 
 ![Citadel: The Release War — gameplay preview](docs/assets/preview.gif)
 
+## This is not just a game
+
+It turns your **real work sessions into reusable AI agents** you can actually use —
+and lets you **watch that warband handle challenges in playful form**. Each uploaded
+session becomes a hero; the decoder hands you ready-to-use agents/skills/workflows;
+the battle is just a fun way to see your roster in action.
+
+**Three steps:**
+
+```bash
+# 1 · Make the archive from your local AI-coding sessions
+curl -fsSL http://m-v-shchegolev-agent-citadel-d3d663.pages.git.ringcentral.com/tools/make-archive.sh | bash
+#    → archive.json + archive.zip
+
+# 2 · Sanitize it (redact secrets before sharing/using), then re-pack
+bqa sanitize archive.json --write
+zip -0 archive.zip archive.json
+
+# 3 · Use the ready agents in Codex
+#    drop archive.zip on the decoder page → ⬇ Download agents.zip → then:
+unzip bqa-os-output.zip -d .bqa/
+bqa codex
+codex exec "$(cat .bqa/prompts/bqa-master-context.md)
+
+Task: Test DATA-12345 using my decoded agents and workflows."
+```
+
+(No `bqa` CLI? See [Use the decoded archive](#use-the-decoded-archive-eg-in-codex) below for the CLI-free path. Same agents also work in Claude Code / OpenCode.)
+
 ## Build your own warband (one command)
 
 Turn your local AI-coding sessions into an uploadable archive, then drop it on the
