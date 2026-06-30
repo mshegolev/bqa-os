@@ -1,0 +1,52 @@
+# Synthetic example of the artifact produced by `bqa build` at
+# .bqa/knowledge/successful_prompts.yaml
+#
+# Shape matches internal/core/knowledge/usecase.go (renderFindings):
+#   top-level `successful_prompts:` key, list items with
+#   name / domain / evidence / source.
+# The reusable_prompt and reusable_check keys are additive, human-curated
+# extensions; consumers that only know the base contract can ignore them.
+#
+# All records below are SYNTHETIC and SAFE — no client data, no secrets.
+successful_prompts:
+  - name: "graphql_typed_error_not_500"
+    domain: "prompts"
+    evidence: "task: send malformed args to order(id:) and assert a typed GraphQL error instead of a 500"
+    source: "examples/normalized/graphql/session-01.txt"
+    reusable_prompt: "For each GraphQL mutation/query under [focus], send missing-required-arg, wrong-type, and null-vs-absent variants; assert a typed error with the correct path and no 5xx."
+    reusable_check: "negative input -> response.errors[0].path == [field] AND http_status == 200"
+
+  - name: "api_regression_contract_stability"
+    domain: "prompts"
+    evidence: "task: re-run the search API regression suite and assert response schema and sort order are unchanged across the release"
+    source: "examples/normalized/api/session-02.txt"
+    reusable_prompt: "Given the [endpoint] contract, build a regression check that asserts response shape, status codes, and sort order are unchanged between [baseline] and [candidate] builds, ignoring volatile values."
+    reusable_check: "diff(schema(baseline_response), schema(candidate_response)) == empty AND results sorted by relevance"
+
+  - name: "etl_partition_reconciliation_check"
+    domain: "prompts"
+    evidence: "task: validate etl reconciliation for the daily partition so destination row count equals source extract count"
+    source: "examples/normalized/etl/session-03.txt"
+    reusable_prompt: "For pipeline [name], reconcile [src] -> [dst] for partition [date]: assert destination count equals source extract count and no business keys are duplicated."
+    reusable_check: "count(dst where partition_date=[date]) - count(src where partition_date=[date]) == 0"
+
+  - name: "data_quality_dup_key_and_freshness"
+    domain: "prompts"
+    evidence: "task: assert no duplicate business keys in the partition and that max(load_ts) is within the freshness SLA"
+    source: "examples/normalized/data_quality/session-04.txt"
+    reusable_prompt: "For [dst], emit zero-rows-on-success assertions for: duplicate business keys within [partition], nulls in required columns, and max(load_ts) within [sla] hours."
+    reusable_check: "SELECT business_key, COUNT(*) c FROM [dst] WHERE partition_date='[date]' GROUP BY business_key HAVING c > 1  -- expect zero rows"
+
+  - name: "bug_report_standardization_to_guard"
+    domain: "prompts"
+    evidence: "task: convert a duplicate-rows bug report into a standardized summary plus a single regression guard that would have caught it"
+    source: "examples/normalized/bugs/session-05.txt"
+    reusable_prompt: "Turn this bug report into: standardized summary (title/severity/component), minimal repro with [placeholder] inputs, and one regression guard (test or validation rule) that detects the same defect class."
+    reusable_check: "regression guard exists AND fails on the pre-fix build AND passes on the post-fix build"
+
+  - name: "knowledge_extraction_to_findings"
+    domain: "prompts"
+    evidence: "task: distill a testing session transcript into name/domain/evidence/source findings, dropping polite filler"
+    source: "examples/normalized/prompts/session-06.txt"
+    reusable_prompt: "Extract reusable findings from [transcript]; for each emit name/domain/evidence/source plus reusable_check; only emit on concrete evidence; drop generic or polite text; replace any sensitive value with [placeholder]."
+    reusable_check: "every emitted finding cites concrete evidence AND contains no client data, secrets, or hostnames"
