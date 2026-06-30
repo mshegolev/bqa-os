@@ -77,6 +77,8 @@ func brainCmd() *cobra.Command {
 	}
 	installCmd.Flags().StringVar(&installFrom, "from", "", "source brain package directory (required)")
 	installCmd.Flags().StringVar(&installTarget, "target", "", "target client project directory (required)")
+	_ = installCmd.MarkFlagRequired("from")
+	_ = installCmd.MarkFlagRequired("target")
 	cmd.AddCommand(installCmd)
 
 	return cmd

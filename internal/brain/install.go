@@ -92,15 +92,17 @@ func Install(source, target string) (*InstallResult, error) {
 // validateBrainPackage ensures source looks like a brain export: it must contain
 // the required directories and at least one artifact directory with content.
 func validateBrainPackage(source string) error {
+	// Use Lstat so a symlinked directory does not pass validation — filepath.Walk
+	// would then skip it and silently install nothing from that subtree.
 	for _, name := range installRequiredDirs {
-		info, err := os.Stat(filepath.Join(source, name))
+		info, err := os.Lstat(filepath.Join(source, name))
 		if err != nil || !info.IsDir() {
 			return fmt.Errorf("invalid brain package: missing required %q directory in %s", name, source)
 		}
 	}
 
 	for _, name := range installArtifactDirs {
-		info, err := os.Stat(filepath.Join(source, name))
+		info, err := os.Lstat(filepath.Join(source, name))
 		if err == nil && info.IsDir() {
 			return nil
 		}
@@ -163,7 +165,7 @@ func copyTree(src, dst string) ([]string, error) {
 		if err := os.MkdirAll(filepath.Dir(dstFile), 0o755); err != nil {
 			return err
 		}
-		if err := copyFile(path, dstFile); err != nil {
+		if err := copyFile(path, dstFile, info.Mode().Perm()); err != nil {
 			return err
 		}
 		written = append(written, filepath.ToSlash(filepath.Join(base, cleaned)))
@@ -175,19 +177,25 @@ func copyTree(src, dst string) ([]string, error) {
 	return written, nil
 }
 
-func copyFile(src, dst string) error {
+func copyFile(src, dst string, perm os.FileMode) error {
 	in, err := os.Open(src)
 	if err != nil {
 		return err
 	}
 	defer in.Close()
 
-	out, err := os.Create(dst)
+	// Preserve the source file's permission bits (e.g. the +x bit on scripts).
+	if perm == 0 {
+		perm = 0o644
+	}
+	out, err := os.OpenFile(dst, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, perm)
 	if err != nil {
 		return err
 	}
 	if _, err := io.Copy(out, in); err != nil {
 		out.Close()
+		// Don't leave a truncated/partial file behind on failure.
+		_ = os.Remove(dst)
 		return err
 	}
 	return out.Close()
