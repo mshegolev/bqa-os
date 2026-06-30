@@ -77,16 +77,22 @@ func (u UseCase) Run(ctx context.Context) (Result, error) {
 		}
 	}
 
-	artifacts := []Artifact{
-		{Filename: "etl_patterns.yaml", Content: renderFindings("etl_patterns", findings["etl"])},
-		{Filename: "graphql_patterns.yaml", Content: renderFindings("graphql_patterns", findings["graphql"])},
-		{Filename: "api_patterns.yaml", Content: renderFindings("api_patterns", findings["api"])},
-		{Filename: "data_quality_patterns.yaml", Content: renderFindings("data_quality_patterns", findings["data_quality"])},
-		{Filename: "common_bugs.yaml", Content: renderFindings("common_bugs", findings["bugs"])},
-		{Filename: "successful_prompts.yaml", Content: renderFindings("successful_prompts", findings["prompts"])},
-		{Filename: "droid_patterns.yaml", Content: renderFindings("droid_patterns", findings["droid"])},
-		{Filename: "runtime_patterns.yaml", Content: renderFindings("runtime_patterns", findings["runtime"])},
-		{Filename: "project_profile.yaml", Content: renderProfile(profile)},
+	// content is keyed by the artifact root key (filename without ".yaml").
+	content := map[string]string{
+		"etl_patterns":          renderFindings("etl_patterns", findings["etl"]),
+		"graphql_patterns":      renderFindings("graphql_patterns", findings["graphql"]),
+		"api_patterns":          renderFindings("api_patterns", findings["api"]),
+		"data_quality_patterns": renderFindings("data_quality_patterns", findings["data_quality"]),
+		"common_bugs":           renderFindings("common_bugs", findings["bugs"]),
+		"successful_prompts":    renderFindings("successful_prompts", findings["prompts"]),
+		"droid_patterns":        renderFindings("droid_patterns", findings["droid"]),
+		"runtime_patterns":      renderFindings("runtime_patterns", findings["runtime"]),
+		"project_profile":       renderProfile(profile),
+	}
+
+	artifacts := make([]Artifact, 0, len(ExpectedArtifacts()))
+	for _, spec := range ExpectedArtifacts() {
+		artifacts = append(artifacts, Artifact{Filename: spec.Filename, Content: content[spec.RootKey]})
 	}
 
 	created := 0

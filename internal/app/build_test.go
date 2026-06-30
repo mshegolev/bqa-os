@@ -54,6 +54,88 @@ func TestBuildCmdPrintsSalesGeneratedDirWhenEnabled(t *testing.T) {
 	}
 }
 
+func TestBuildCheckPassesAfterSuccessfulBuild(t *testing.T) {
+	tmp := t.TempDir()
+	sessionsDir := writeSyntheticSessionFixture(t, tmp)
+	knowledgeDir := filepath.Join(tmp, ".bqa", "knowledge")
+
+	// First build to generate artifacts.
+	buildIt := buildCmd()
+	var buildOut bytes.Buffer
+	buildIt.SetOut(&buildOut)
+	buildIt.SetErr(&buildOut)
+	buildIt.SetArgs([]string{"--sessions", sessionsDir, "--knowledge-dir", knowledgeDir})
+	if err := buildIt.Execute(); err != nil {
+		t.Fatalf("build Execute returned error: %v", err)
+	}
+
+	// Then validate with --check; should exit 0.
+	checkIt := buildCmd()
+	var checkOut bytes.Buffer
+	checkIt.SetOut(&checkOut)
+	checkIt.SetErr(&checkOut)
+	checkIt.SetArgs([]string{"--sessions", sessionsDir, "--knowledge-dir", knowledgeDir, "--check"})
+	if err := checkIt.Execute(); err != nil {
+		t.Fatalf("build --check returned error on valid output: %v\noutput: %s", err, checkOut.String())
+	}
+	if !strings.Contains(checkOut.String(), "valid") {
+		t.Fatalf("expected success message, got %q", checkOut.String())
+	}
+}
+
+func TestBuildCheckFailsOnMissingArtifacts(t *testing.T) {
+	tmp := t.TempDir()
+	sessionsDir := writeSyntheticSessionFixture(t, tmp)
+	knowledgeDir := filepath.Join(tmp, ".bqa", "knowledge")
+
+	// No build performed; knowledge dir is empty/missing.
+	checkIt := buildCmd()
+	var checkOut bytes.Buffer
+	checkIt.SetOut(&checkOut)
+	checkIt.SetErr(&checkOut)
+	checkIt.SetArgs([]string{"--sessions", sessionsDir, "--knowledge-dir", knowledgeDir, "--check"})
+	err := checkIt.Execute()
+	if err == nil {
+		t.Fatalf("expected non-zero exit (error) when artifacts are missing, output: %s", checkOut.String())
+	}
+	if !strings.Contains(checkOut.String(), "Invalid build output") {
+		t.Fatalf("expected invalid output listing, got %q", checkOut.String())
+	}
+}
+
+func TestBuildCheckFailsOnEmptyArtifact(t *testing.T) {
+	tmp := t.TempDir()
+	sessionsDir := writeSyntheticSessionFixture(t, tmp)
+	knowledgeDir := filepath.Join(tmp, ".bqa", "knowledge")
+
+	buildIt := buildCmd()
+	var buildOut bytes.Buffer
+	buildIt.SetOut(&buildOut)
+	buildIt.SetErr(&buildOut)
+	buildIt.SetArgs([]string{"--sessions", sessionsDir, "--knowledge-dir", knowledgeDir})
+	if err := buildIt.Execute(); err != nil {
+		t.Fatalf("build Execute returned error: %v", err)
+	}
+
+	// Corrupt one artifact by truncating it to empty.
+	corrupted := filepath.Join(knowledgeDir, "project_profile.yaml")
+	if err := os.WriteFile(corrupted, []byte(""), 0o600); err != nil {
+		t.Fatalf("WriteFile returned error: %v", err)
+	}
+
+	checkIt := buildCmd()
+	var checkOut bytes.Buffer
+	checkIt.SetOut(&checkOut)
+	checkIt.SetErr(&checkOut)
+	checkIt.SetArgs([]string{"--sessions", sessionsDir, "--knowledge-dir", knowledgeDir, "--check"})
+	if err := checkIt.Execute(); err == nil {
+		t.Fatalf("expected non-zero exit for empty artifact, output: %s", checkOut.String())
+	}
+	if !strings.Contains(checkOut.String(), "project_profile.yaml") {
+		t.Fatalf("expected the empty file to be named, got %q", checkOut.String())
+	}
+}
+
 func writeSyntheticSessionFixture(t *testing.T, tmp string) string {
 	t.Helper()
 
