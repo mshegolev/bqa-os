@@ -1,5 +1,7 @@
 # BQA-OS
 
+> **Citadel: The Release War isn't just a game.** It auto-forges reusable AI agents from your real work sessions, plugs them into Codex / Claude / OpenCode, and lets you watch your warband battle the bugs, CVEs and the Deadline Warlord — in playful form. **[▶ Play now](http://m-v-shchegolev-agent-citadel-d3d663.pages.git.ringcentral.com/)**
+
 **BQA-OS (Better QA Operating System)** is an AI-native operating system for quality engineering.
 
 BQA-OS is designed to connect QA knowledge, agents, skills, workflows, guardrails, memory, and AI coding runtimes into one reusable system.
