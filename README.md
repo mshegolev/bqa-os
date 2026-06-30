@@ -355,14 +355,15 @@ Implemented:
 - `bqa doctor` workspace-health checks (pass/fail per directory, non-zero exit on failure)
 - BQA Brain `connect` / `pull` / `status` / `sync`
 - `bqa sanitize` secret scan + redaction (dry-run, and `--write` to apply)
+- GitHub Releases with prebuilt binaries and a working `bqa self-update`
+  (downloads the matching `bqa-<os>-<arch>` asset and atomically swaps the
+  running binary; `--check` reports current vs latest without downloading)
 
 Planned:
 
 - real session analyzer (current decode is keyword-based, MVP-level)
 - agent / skill / workflow generators beyond the MVP set
 - project profile builder
-- GitHub Releases with prebuilt binaries and a working `bqa self-update`
-  (the command exists but reports "not available yet")
 
 ## Security posture
 
