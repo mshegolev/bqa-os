@@ -39,3 +39,15 @@ func TestRenderAgentRuntimeFlavor(t *testing.T) {
 		t.Fatalf("expected base rule still present")
 	}
 }
+
+func TestCatalogLookups(t *testing.T) {
+	if Skill("etl-log-investigation").Content == "" {
+		t.Fatalf("expected skill content")
+	}
+	if Workflow("session-knowledge-workflow").Domain != "memory" {
+		t.Fatalf("expected memory domain, got %q", Workflow("session-knowledge-workflow").Domain)
+	}
+	if !strings.Contains(RuntimeAgentContent(), "Runtime Agent") {
+		t.Fatalf("expected Runtime Agent in runtime agent content")
+	}
+}
