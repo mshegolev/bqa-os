@@ -99,16 +99,28 @@ bqa runtime detect
 cd /path/to/project
 bqa init
 bqa runtime detect
+bqa runtime install-commands
 bqa codex
 ```
 
-This creates:
+This creates the BQA master context and project-local command helpers:
 
 ```text
 .bqa/prompts/bqa-master-context.md
+.bqa/runtime-commands/codex/bqa-master.md
+.bqa/runtime-commands/claude/bqa-master.md
+.bqa/runtime-commands/opencode/bqa-master.md
+.claude/commands/bqa-master.md
 ```
 
-Then start your AI coding runtime and use:
+Claude Code can then use:
+
+```text
+/bqa-master
+```
+
+For Codex and OpenCode, reference the helper file from `.bqa/runtime-commands/`
+or start your AI coding runtime and use:
 
 ```text
 Read .bqa/prompts/bqa-master-context.md and act as BQA Master Agent.
@@ -116,6 +128,17 @@ Read .bqa/prompts/bqa-master-context.md and act as BQA Master Agent.
 Task:
 Test DATA-12345.
 ```
+
+To install the unified BQA Team agents, skills, workflows, guardrails, and
+memory indexes into a project, emit runtime-native files from the BQA registry:
+
+```bash
+bqa emit --registry /path/to/bqa-team/team/brain/registry.json --target .
+```
+
+This writes runtime-native assets under `.claude/`, `.codex/`, and `.opencode/`
+without overwriting user-owned root instruction files such as `CLAUDE.md` or
+`AGENTS.md`.
 
 ## Commands available now
 
@@ -125,10 +148,12 @@ bqa discover
 bqa ingest
 bqa build
 bqa build --sales-package
+bqa emit --registry /path/to/bqa-team/team/brain/registry.json --target .
 bqa etl-agent-pack
 bqa run "Test DATA-12345"
 bqa team pipeline --issue-json issue.json --issue-number 123
 bqa runtime detect
+bqa runtime install-commands
 bqa codex
 bqa claude
 bqa opencode
