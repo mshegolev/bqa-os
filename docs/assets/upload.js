@@ -60,7 +60,10 @@ function extract(archive) {
     "data_quality_patterns.yaml", "common_bugs.yaml", "successful_prompts.yaml", "project_profile.yaml"];
   const specs = specOrder.map((name) => {
     const d = Object.keys(DOMAIN_DEFS).find((k) => DOMAIN_DEFS[k].spec === name);
-    const found = d ? (counts[d] || 0) : archive.sessions.length;
+    // Only domain specs carry real finding counts. project_profile.yaml (no
+    // matching domain) is a profile summary, not a finding — report 0 rather
+    // than echoing the session count as a fabricated finding total.
+    const found = d ? (counts[d] || 0) : 0;
     return { name, findings: found };
   });
 
@@ -96,6 +99,11 @@ function buildOutputFiles(result) {
     result.workflows.map((w) => "- " + w.name + " - " + w.steps + " steps").join("\n") + "\n";
   files["recommendations.md"] = "# Recommendations\n\n" + result.recommendations.map((r) => "- " + r).join("\n") + "\n";
   files["result.json"] = JSON.stringify(result, null, 2) + "\n";
+  // QA Memory Score scorecard (issue #46) — only when the scorer is loaded.
+  if (typeof BQA_SCORE !== "undefined") {
+    const card = BQA_SCORE.scoreResult(result);
+    files[".bqa/scorecard.yaml"] = BQA_SCORE.scorecardYaml(card);
+  }
   return files;
 }
 
@@ -193,10 +201,123 @@ function renderResult(result, sourceName) {
   const recList = $("#recs"); recList.replaceChildren();
   for (const r of result.recommendations) recList.appendChild(el("li", null, r));
 
+  runPipeline(result);                 // #43 staged processing viewer
+  const card = renderScorecard(result); // #46 QA Memory Score
+  renderCampaign(result, card);         // #44 campaign scenarios
+
   LAST_OUTPUT = { files: buildOutputFiles(result), result };
   $("#download").disabled = false;
   setStatus("Decoded " + result.profile.sessions + " sessions -> " + result.agents.length +
     " agents, " + result.specs.length + " specs.", "ok");
+}
+
+/* --- Processing pipeline viewer (issue #43) ------------------------ */
+// Six original BQA-OS forge stages: raw QA chaos -> downloadable QA system.
+const PIPELINE_STAGES = [
+  { glyph: "⛏", label: "Session Mine", note: "Raw QA notes mined as resources" },
+  { glyph: "🜄", label: "Sanitizer Gate", note: "Dangerous/private data removed" },
+  { glyph: "⚒", label: "Knowledge Forge", note: "Reusable patterns extracted" },
+  { glyph: "⛨", label: "Skill Barracks", note: "Specialized skills unlocked" },
+  { glyph: "♛", label: "Agent Hall", note: "QA agents recruited" },
+  { glyph: "⚑", label: "Workflow Command", note: "QA system exported" },
+];
+let PIPELINE_TIMER = null;
+function reducedMotion() {
+  try { return window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches; }
+  catch (_) { return false; }
+}
+function renderPipelineStages() {
+  const box = $("#pipeline"); if (!box) return [];
+  box.replaceChildren();
+  return PIPELINE_STAGES.map((s) => {
+    const cell = el("div", "pstage");
+    cell.appendChild(el("span", "pg", s.glyph));
+    cell.appendChild(el("b", null, s.label));
+    cell.appendChild(el("small", null, s.note));
+    box.appendChild(cell);
+    return cell;
+  });
+}
+function runPipeline(result) {
+  const cells = renderPipelineStages();
+  if (!cells.length) return;
+  if (PIPELINE_TIMER) { clearInterval(PIPELINE_TIMER); PIPELINE_TIMER = null; }
+  // Reduced-motion: mark every stage done immediately, no animation.
+  if (reducedMotion() || typeof setInterval === "undefined") {
+    cells.forEach((c) => { c.className = "pstage done"; });
+    return;
+  }
+  let i = 0;
+  const advance = () => {
+    if (i > 0) cells[i - 1].className = "pstage done";
+    if (i >= cells.length) { clearInterval(PIPELINE_TIMER); PIPELINE_TIMER = null; return; }
+    cells[i].className = "pstage active";
+    i++;
+  };
+  advance();
+  PIPELINE_TIMER = setInterval(advance, 380);
+}
+
+/* --- QA Memory Score (issue #46) ----------------------------------- */
+function renderScorecard(result) {
+  const box = $("#scorecard"); if (!box || typeof BQA_SCORE === "undefined") return null;
+  const card = BQA_SCORE.scoreResult(result);
+  box.replaceChildren();
+
+  const dial = el("div", "score-dial");
+  const num = el("div", "score-num"); num.appendChild(document.createTextNode(String(card.score)));
+  num.appendChild(el("small", null, " / 100"));
+  dial.appendChild(num);
+  const band = el("div", "score-band " + (card.pilotReady ? "ready" : "notready"), card.band);
+  dial.appendChild(band);
+  dial.appendChild(el("div", "score-bandlabel", card.bandLabel));
+  dial.appendChild(el("span", "chip pilot-chip " + (card.pilotReady ? "ready" : "notready"),
+    card.pilotReady ? "✓ Pilot-ready" : "Pilot-ready ≥ " + card.pilotReadyAt));
+  box.appendChild(dial);
+
+  const detail = el("div");
+  for (const d of card.dimensions) {
+    const row = el("div", "dim-row");
+    row.appendChild(el("span", "dim-label", d.label));
+    const bar = el("div", "dim-bar"); const fill = el("span"); fill.style.width = d.score + "%"; bar.appendChild(fill);
+    row.appendChild(bar);
+    row.appendChild(el("span", "dim-val", String(d.score)));
+    detail.appendChild(row);
+  }
+  const meta = el("div", "score-meta");
+  const best = el("span"); best.appendChild(document.createTextNode("Best: ")); best.appendChild(el("b", null, card.bestDomain)); meta.appendChild(best);
+  const needs = el("span"); needs.appendChild(document.createTextNode("Needs work: ")); needs.appendChild(el("b", null, card.needsWork)); meta.appendChild(needs);
+  detail.appendChild(meta);
+  if (card.weakSpots.length) {
+    const weak = el("ul", "weak");
+    for (const w of card.weakSpots) weak.appendChild(el("li", null, w));
+    detail.appendChild(weak);
+  }
+  box.appendChild(detail);
+
+  const na = $("#next-action");
+  if (na) { na.replaceChildren(el("b", null, "Recommended next action: "), document.createTextNode(card.nextAction)); }
+  return card;
+}
+
+/* --- Campaign scenario map (issue #44) ----------------------------- */
+function renderCampaign(result, card) {
+  const box = $("#campaign"); if (!box || typeof BQA_CAMPAIGN === "undefined") return;
+  box.replaceChildren();
+  for (const node of BQA_CAMPAIGN.unlockedNodes(result, card)) {
+    const cell = el("div", "node" + (node.unlocked ? " on" : ""));
+    const head = el("div", "node-head");
+    head.appendChild(el("span", "ng", node.glyph));
+    head.appendChild(el("b", null, node.title));
+    cell.appendChild(head);
+    cell.appendChild(el("div", "node-maps", node.maps));
+    cell.appendChild(el("div", "node-blurb", node.blurb));
+    const unlocks = el("div", "node-unlocks");
+    for (const u of node.unlocks) unlocks.appendChild(el("span", "chip", u));
+    cell.appendChild(unlocks);
+    cell.appendChild(el("div", "lock", node.unlocked ? "✓ unlocked" : "🔒 locked"));
+    box.appendChild(cell);
+  }
 }
 
 function fillList(ul, items, parts) {
@@ -312,6 +433,9 @@ document.addEventListener("DOMContentLoaded", () => {
   ["dragenter", "dragover"].forEach((ev) => drop.addEventListener(ev, (e) => { e.preventDefault(); drop.classList.add("over"); }));
   ["dragleave", "drop"].forEach((ev) => drop.addEventListener(ev, (e) => { e.preventDefault(); drop.classList.remove("over"); }));
   drop.addEventListener("drop", (e) => { const f = e.dataTransfer.files[0]; if (f) readFile(f); });
+
+  // Preview the campaign map (all nodes locked except always-on) before any decode.
+  renderCampaign(null, null);
 
   setStatus("awaiting archive. drop a .json or load the demo.");
 });
