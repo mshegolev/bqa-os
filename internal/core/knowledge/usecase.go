@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"sort"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/mshegolev/bqa-os/internal/ports"
 	"github.com/mshegolev/bqa-os/internal/textutil"
@@ -308,23 +309,47 @@ func cleanEvidenceText(text string) string {
 	return strings.TrimSpace(text)
 }
 
+// evidenceLeadIn / evidenceWindow bound the snippet captured around a matched
+// signal. The window is wide enough to carry a full QA context sentence
+// (reconciliation + row count + schema + partition + scheduler, or the
+// null/duplicate/schema-drift/checksum chain) past the first keyword, but is
+// hard-capped well below a transcript body so no raw session leaks verbatim.
+const (
+	evidenceLeadIn = 120
+	evidenceWindow = 480
+)
+
 func evidence(text string, needle string) string {
 	idx := strings.Index(strings.ToLower(text), strings.ToLower(needle))
 	if idx < 0 {
-		if len(text) > 220 {
-			return text[:220]
-		}
-		return text
+		return boundEvidence(text)
 	}
-	start := idx - 100
+	start := idx - evidenceLeadIn
 	if start < 0 {
 		start = 0
 	}
-	end := idx + 220
+	end := start + evidenceWindow
 	if end > len(text) {
 		end = len(text)
 	}
+	// Snap both offsets to valid rune boundaries so a multi-byte character is
+	// never split (real session content contains non-ASCII).
+	for start > 0 && !utf8.RuneStart(text[start]) {
+		start--
+	}
+	for end < len(text) && !utf8.RuneStart(text[end]) {
+		end++
+	}
 	return strings.TrimSpace(text[start:end])
+}
+
+// boundEvidence caps a snippet at the evidence window on a rune boundary so a
+// multi-byte character is never split and no raw transcript is copied whole.
+func boundEvidence(text string) string {
+	if r := []rune(text); len(r) > evidenceWindow {
+		return strings.TrimSpace(string(r[:evidenceWindow]))
+	}
+	return text
 }
 
 func etlNeedle(text string) string {
