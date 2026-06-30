@@ -19,5 +19,13 @@ func runtimeCmd() *cobra.Command {
 		},
 	})
 
+	cmd.AddCommand(&cobra.Command{
+		Use:   "install-commands",
+		Short: "Install project-local BQA Master command helpers",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return runtime.InstallCommands()
+		},
+	})
+
 	return cmd
 }

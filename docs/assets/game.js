@@ -207,6 +207,7 @@ function spawnEnemy(type) {
 function logMsg(msg, sev) { G.log.unshift({ msg, sev }); if (G.log.length > 40) G.log.pop(); renderEventLog(); }
 function applyLog(ev) {
   G.phase = Math.max(G.phase, ev.phase || 0);
+  unlockDemoRecruitsForEvent(ev);
   const spawn = LOG_SPAWN[ev.type];
   if (spawn === "horde") { for (let i = 0; i < 4; i++) spawnEnemy("bug_grunt"); spawnEnemy("incident_ogre"); }
   else if (spawn && spawn.startsWith("unit:")) spawnUnit(spawn.slice(5));
@@ -494,6 +495,34 @@ const COMMANDS = [
   { id: "gather", label: "+Gather", glyph: "⛏", kind: "skill" },
   { id: "clear_context", label: "Clear Context", glyph: "✺", kind: "spell" },
 ];
+const DEMO_RECRUIT_UNLOCK_ORDER = ["feature_worker", "prompt_smith", "hardening_engineer", "incident_defender", "sentinel_archer"];
+const DEMO_RECRUIT_UNLOCK_EVENTS = {
+  feature_detected: "prompt_smith",
+  prompt_loaded: "hardening_engineer",
+  hardening_rule_added: "incident_defender",
+  incident_started: "sentinel_archer",
+};
+const DEMO_RECRUIT_LOCK_HINTS = {
+  prompt_smith: "After first feature",
+  hardening_engineer: "After prompt smithing",
+  incident_defender: "After hardening",
+  sentinel_archer: "When incidents start",
+};
+const demoRecruitUnlocked = {};
+function resetDemoRecruitUnlocks() {
+  for (const id of DEMO_RECRUIT_UNLOCK_ORDER) demoRecruitUnlocked[id] = id === "feature_worker";
+}
+function unlockDemoRecruitsForEvent(ev) {
+  const id = ev && DEMO_RECRUIT_UNLOCK_EVENTS[ev.type];
+  if (id) demoRecruitUnlocked[id] = true;
+}
+function demoRecruitSnapshot() {
+  return DEMO_RECRUIT_UNLOCK_ORDER.map((id) => ({ id, locked: !demoRecruitUnlocked[id] }));
+}
+function isCommandLocked(c) {
+  return G.mode === "demo" && c.kind === "recruit" && !demoRecruitUnlocked[c.id];
+}
+resetDemoRecruitUnlocks();
 // Costs rise the more you already have, so growth is steady, never trivial,
 // and the challenge scales proportionally with your army.
 function costFor(c) {
@@ -519,6 +548,7 @@ function addMCP() {
 }
 function doCommand(c) {
   if (G.state !== "playing") return;
+  if (isCommandLocked(c)) { logMsg(c.label + " unlocks later in the demo."); return; }
   const cost = costFor(c);
   if (!canAfford(cost)) { logMsg("Not enough resources for " + c.label + "."); return; }
   spend(cost); sfx("command");
@@ -544,8 +574,13 @@ function updateCommands() {
   for (const c of COMMANDS) {
     const b = box.querySelector('[data-id="' + c.id + '"]'); if (!b) continue;
     const cost = costFor(c);
-    b.disabled = G.state !== "playing" || !canAfford(cost);
+    const locked = isCommandLocked(c);
+    b.disabled = G.state !== "playing" || locked || !canAfford(cost);
+    b.classList.toggle("locked", locked);
+    b.title = locked ? (DEMO_RECRUIT_LOCK_HINTS[c.id] || "Locked in demo") : "";
+    const cg = b.querySelector(".cmd-g"); if (cg) cg.textContent = locked ? "🔒" : c.glyph;
     const cs = b.querySelector(".cmd-cost"); if (cs) cs.textContent = costStr(cost);
+    if (locked && cs) cs.textContent = "🔒 " + b.title;
   }
 }
 function drawMCP(m) {
@@ -794,7 +829,7 @@ function begin() {
   syncPanels(); requestAnimationFrame(loop);
 }
 function startDemo(seedArchive) {
-  G.mode = "demo"; placeNodes(); seedAgents(seedArchive);
+  G.mode = "demo"; resetDemoRecruitUnlocks(); placeNodes(); seedAgents(seedArchive);
   logMsg("Builder Agent raised the first wall of architecture.");
   begin();
 }

@@ -31,7 +31,19 @@ func TestKnowledgeStoreReadNormalizedSessionResolvesRelativePathUnderSessionBase
 
 func TestKnowledgeStoreReadNormalizedSessionAcceptsBasePrefixedRelativePath(t *testing.T) {
 	tmp := t.TempDir()
-	t.Chdir(tmp)
+	previous, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("Getwd returned error: %v", err)
+	}
+	if err := os.Chdir(tmp); err != nil {
+		t.Fatalf("Chdir returned error: %v", err)
+	}
+	t.Cleanup(func() {
+		if err := os.Chdir(previous); err != nil {
+			t.Fatalf("restore Chdir returned error: %v", err)
+		}
+	})
+
 	sessionBase := filepath.Join(".bqa", "input", "sessions")
 	indexedPath := filepath.Join(sessionBase, "normalized", "codex", "session.md")
 	if err := os.MkdirAll(filepath.Dir(indexedPath), 0o755); err != nil {
