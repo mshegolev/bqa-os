@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/mshegolev/bqa-os/internal/ports"
+	"github.com/mshegolev/bqa-os/internal/textutil"
 )
 
 type UseCase struct {
@@ -107,13 +108,13 @@ func (u UseCase) collectStats(ctx context.Context) packStats {
 		}
 		stats.sessionsProcessed++
 		stats.etlSignals++
-		if hasAny(lower, "reconciliation", "row count", "source table", "target table", "checksum") {
+		if textutil.HasAny(lower, "reconciliation", "row count", "source table", "target table", "checksum") {
 			stats.reconciliationSignals++
 		}
-		if hasAny(lower, "data quality", "null check", "duplicate", "schema drift", "not null") {
+		if textutil.HasAny(lower, "data quality", "null check", "duplicate", "schema drift", "not null") {
 			stats.dataQualitySignals++
 		}
-		if hasAny(lower, "regression", "failed", "failure", "bug", "mismatch") {
+		if textutil.HasAny(lower, "regression", "failed", "failure", "bug", "mismatch") {
 			stats.regressionSignals++
 		}
 	}
@@ -139,16 +140,7 @@ func countSignals(content string, needles ...string) int {
 }
 
 func hasETLSignal(text string) bool {
-	return hasAny(text, "etl", "spark", "hive", "oozie", "airflow", "pipeline", "reconciliation", "row count")
-}
-
-func hasAny(text string, needles ...string) bool {
-	for _, needle := range needles {
-		if strings.Contains(text, needle) {
-			return true
-		}
-	}
-	return false
+	return textutil.HasAny(text, "etl", "spark", "hive", "oozie", "airflow", "pipeline", "reconciliation", "row count")
 }
 
 func summary(stats packStats) string {

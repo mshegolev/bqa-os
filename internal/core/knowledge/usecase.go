@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/mshegolev/bqa-os/internal/ports"
+	"github.com/mshegolev/bqa-os/internal/textutil"
 )
 
 type UseCase struct {
@@ -103,20 +104,20 @@ func isETLSignal(text string, sourcePath string) bool {
 	if isMetadataOnly(text) {
 		return false
 	}
-	return hasAny(text, "airflow", "spark", "hive", "oozie", "dag run", "dag_id", "etl_logs", "reconciliation", "source table", "target table", "row count", "parquet", "data pipeline") || strings.Contains(sourcePath, "etl")
+	return textutil.HasAny(text, "airflow", "spark", "hive", "oozie", "dag run", "dag_id", "etl_logs", "reconciliation", "source table", "target table", "row count", "parquet", "data pipeline") || strings.Contains(sourcePath, "etl")
 }
 
 func isGraphQLSignal(text string, sourcePath string) bool {
-	if hasAny(sourcePath, "normalized/droid") {
+	if textutil.HasAny(sourcePath, "normalized/droid") {
 		return false
 	}
-	if hasAny(text, "github_graphql_url", "api/graphql", "github api url") {
+	if textutil.HasAny(text, "github_graphql_url", "api/graphql", "github api url") {
 		return false
 	}
 	if !strings.Contains(text, "graphql") {
 		return false
 	}
-	return hasAny(
+	return textutil.HasAny(
 		text,
 		"graphql query",
 		"graphql mutation",
@@ -129,46 +130,37 @@ func isGraphQLSignal(text string, sourcePath string) bool {
 }
 
 func isAPISignal(text string) bool {
-	if hasAny(text, "github_api_url", "github_server_url") {
+	if textutil.HasAny(text, "github_api_url", "github_server_url") {
 		return false
 	}
-	return hasAny(text, "rest api", "http status", "status code", "endpoint", "contract test", "openapi", "swagger", "request payload", "response payload", "post /", "get /")
+	return textutil.HasAny(text, "rest api", "http status", "status code", "endpoint", "contract test", "openapi", "swagger", "request payload", "response payload", "post /", "get /")
 }
 
 func isDataQualitySignal(text string) bool {
-	return hasAny(text, "data quality", "schema drift", "null check", "duplicate check", "row count", "checksum", "not null", "unique constraint", "dq check", "data validation")
+	return textutil.HasAny(text, "data quality", "schema drift", "null check", "duplicate check", "row count", "checksum", "not null", "unique constraint", "dq check", "data validation")
 }
 
 func isFailureSignal(text string) bool {
-	return hasAny(text, "failed", "failure", "error:", "panic", "regression", "flaky", "stack trace", "exception", "traceback")
+	return textutil.HasAny(text, "failed", "failure", "error:", "panic", "regression", "flaky", "stack trace", "exception", "traceback")
 }
 
 func isPromptSignal(text string) bool {
-	return hasAny(text, "task:", "read .bqa", "act as", "please", "your task", "implement", "analyze this repository")
+	return textutil.HasAny(text, "task:", "read .bqa", "act as", "please", "your task", "implement", "analyze this repository")
 }
 
 func isDroidSignal(sourcePath string) bool {
-	return hasAny(sourcePath, "/.factory/", "normalized/droid")
+	return textutil.HasAny(sourcePath, "/.factory/", "normalized/droid")
 }
 
 func isRuntimeSignal(text string, sourcePath string) bool {
-	if hasAny(sourcePath, "normalized/droid") {
+	if textutil.HasAny(sourcePath, "normalized/droid") {
 		return true
 	}
-	return hasAny(sourcePath, "normalized/claude", "normalized/codex", "normalized/opencode") && hasAny(text, "tooluse", "tool call", "run command", "sandbox", "approval", "transcript", "agenttype")
+	return textutil.HasAny(sourcePath, "normalized/claude", "normalized/codex", "normalized/opencode") && textutil.HasAny(text, "tooluse", "tool call", "run command", "sandbox", "approval", "transcript", "agenttype")
 }
 
 func isMetadataOnly(text string) bool {
-	return hasAny(text, "agenttype", "tooluseid") && !hasAny(text, "airflow", "spark", "hive", "oozie", "etl_logs", "reconciliation", "parquet")
-}
-
-func hasAny(text string, values ...string) bool {
-	for _, value := range values {
-		if strings.Contains(text, value) {
-			return true
-		}
-	}
-	return false
+	return textutil.HasAny(text, "agenttype", "tooluseid") && !textutil.HasAny(text, "airflow", "spark", "hive", "oozie", "etl_logs", "reconciliation", "parquet")
 }
 
 func cleanEvidenceText(text string) string {
@@ -249,10 +241,10 @@ func renderFindings(root string, items []Finding) string {
 	}
 	items = uniqueFindings(items)
 	for _, item := range items {
-		b.WriteString("  - name: " + yamlString(item.Name) + "\n")
-		b.WriteString("    domain: " + yamlString(item.Domain) + "\n")
-		b.WriteString("    evidence: " + yamlString(item.Evidence) + "\n")
-		b.WriteString("    source: " + yamlString(item.SourcePath) + "\n")
+		b.WriteString("  - name: " + textutil.QuoteYAML(item.Name) + "\n")
+		b.WriteString("    domain: " + textutil.QuoteYAML(item.Domain) + "\n")
+		b.WriteString("    evidence: " + textutil.QuoteYAML(item.Evidence) + "\n")
+		b.WriteString("    source: " + textutil.QuoteYAML(item.SourcePath) + "\n")
 	}
 	return b.String()
 }
@@ -277,10 +269,4 @@ func uniqueFindings(items []Finding) []Finding {
 	}
 	sort.Slice(out, func(i, j int) bool { return out[i].SourcePath < out[j].SourcePath })
 	return out
-}
-
-func yamlString(value string) string {
-	value = strings.ReplaceAll(value, "\\", "\\\\")
-	value = strings.ReplaceAll(value, "\"", "\\\"")
-	return "\"" + value + "\""
 }

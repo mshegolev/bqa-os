@@ -8,8 +8,8 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"strings"
 
+	"github.com/mshegolev/bqa-os/internal/pathsafe"
 	"github.com/mshegolev/bqa-os/internal/ports"
 )
 
@@ -95,8 +95,8 @@ func (r Reader) ReadArtifactSource(ctx context.Context, source string) (string, 
 	default:
 	}
 
-	cleaned := filepath.Clean(source)
-	if filepath.IsAbs(cleaned) || cleaned == ".." || strings.HasPrefix(cleaned, ".."+string(os.PathSeparator)) {
+	cleaned, ok := pathsafe.RelClean(source)
+	if !ok {
 		return "", fmt.Errorf("unsafe artifact source: %s", source)
 	}
 	data, err := os.ReadFile(filepath.Join(r.Root, cleaned))
