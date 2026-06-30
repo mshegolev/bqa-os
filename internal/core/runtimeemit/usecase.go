@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/mshegolev/bqa-os/internal/ports"
+	"github.com/mshegolev/bqa-os/internal/textutil"
 )
 
 // SupportedTargets lists the runtimes this use case can emit for.
@@ -184,8 +185,5 @@ func joinFrontmatter(lines ...string) string {
 }
 
 func yamlQuote(value string) string {
-	value = strings.ReplaceAll(value, "\\", "\\\\")
-	value = strings.ReplaceAll(value, "\"", "\\\"")
-	value = strings.ReplaceAll(value, "\n", " ")
-	return "\"" + value + "\""
+	return textutil.QuoteYAML(strings.ReplaceAll(value, "\n", " "))
 }

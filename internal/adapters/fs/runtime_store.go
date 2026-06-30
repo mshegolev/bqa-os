@@ -5,7 +5,8 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"strings"
+
+	"github.com/mshegolev/bqa-os/internal/pathsafe"
 )
 
 // RuntimeStore writes generated runtime files under TargetDir. When DryRun is
@@ -22,8 +23,8 @@ func (s RuntimeStore) WriteRuntimeArtifact(ctx context.Context, relativePath str
 	default:
 	}
 
-	cleaned := filepath.Clean(relativePath)
-	if filepath.IsAbs(cleaned) || cleaned == ".." || strings.HasPrefix(cleaned, ".."+string(os.PathSeparator)) {
+	cleaned, ok := pathsafe.RelClean(relativePath)
+	if !ok {
 		return fmt.Errorf("unsafe target path: %s", relativePath)
 	}
 	if s.DryRun {
