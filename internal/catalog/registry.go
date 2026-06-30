@@ -16,7 +16,7 @@ func renderRegistry(key, dir string, entries []Entry) string {
 
 // registryAgents is the ordered agent list used for registry derivation.
 var registryAgents = []Entry{
-	{ID: "etl-qa-agent", Domain: "etl"},
+	{ID: etlQACore.ID, Domain: etlQACore.Domain},
 	{ID: "runtime-agent", Domain: "runtime"},
 }
 

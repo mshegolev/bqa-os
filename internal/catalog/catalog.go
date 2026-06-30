@@ -35,8 +35,12 @@ func RenderAgent(core AgentCore, flavor *RuntimeFlavor) string {
 	role := core.Mission
 	rules := core.Rules
 	if flavor != nil {
-		title = flavor.TitlePrefix + " " + core.Title
-		role = flavor.Intro + " " + core.Mission
+		if flavor.TitlePrefix != "" {
+			title = flavor.TitlePrefix + " " + core.Title
+		}
+		if flavor.Intro != "" {
+			role = flavor.Intro + " " + core.Mission
+		}
 		rules = append(append([]string{}, core.Rules...), flavor.ExtraRules...)
 	}
 
