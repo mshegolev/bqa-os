@@ -22,6 +22,9 @@ func doctorCmd() *cobra.Command {
 					mark = "FAIL"
 				}
 				fmt.Fprintf(out, "  [%s] %s\n", mark, c.Detail)
+				if !c.OK && c.Suggestion != "" {
+					fmt.Fprintf(out, "         → %s\n", c.Suggestion)
+				}
 			}
 			if !report.OK {
 				return fmt.Errorf("workspace check failed: run `bqa init` to create missing directories")
