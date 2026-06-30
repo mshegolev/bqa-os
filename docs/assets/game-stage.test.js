@@ -79,7 +79,8 @@ function loadGame(upgrades = {}) {
       G,
       ENEMY_TYPES,
       spawnSurvivalWave,
-      startSurvival
+      startSurvival,
+      tookLead
     };
   `, context);
 
@@ -125,4 +126,20 @@ test("stage and level increase survival spawn density and enemy power", () => {
   assert.ok(thirdLevel.G.enemies.length > firstLevel.G.enemies.length);
   assert.ok(advancedEnemy.maxhp > firstLevel.ENEMY_TYPES.bug_grunt.hp);
   assert.ok(advancedEnemy.dmg > firstEnemy.dmg);
+});
+
+test("tookLead fires only when strictly above the leading official score", () => {
+  const game = loadGame();
+
+  // No official leaderboard yet — any positive run takes the lead.
+  game.G.official = [];
+  assert.equal(game.tookLead(0), false, "zero waves never takes the lead");
+  assert.equal(game.tookLead(1), true, "positive waves lead an empty board");
+
+  // With a leader at 20 waves: tying does NOT fire, beating does.
+  game.G.official = [{ name: "Champ", waves: 20 }, { name: "Two", waves: 12 }, { name: "Three", waves: 5 }];
+  assert.equal(game.tookLead(19), false, "below the leader does not fire");
+  assert.equal(game.tookLead(20), false, "tying the leader does not fire");
+  assert.equal(game.tookLead(21), true, "above the leader fires");
+  assert.equal(game.tookLead(0), false, "zero waves never fires");
 });
