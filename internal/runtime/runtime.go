@@ -7,6 +7,8 @@ import (
 	"path/filepath"
 )
 
+const masterContextPath = ".bqa/prompts/bqa-master-context.md"
+
 type Adapter struct {
 	Name       string
 	BinaryName string
@@ -37,13 +39,8 @@ func Prepare(name string) error {
 		return fmt.Errorf("unsupported runtime: %s", name)
 	}
 
-	if err := os.MkdirAll(filepath.Clean(".bqa/prompts"), 0o755); err != nil {
-		return err
-	}
-
-	contextPath := filepath.Clean(".bqa/prompts/bqa-master-context.md")
-	content := buildContext(adapter)
-	if err := os.WriteFile(contextPath, []byte(content), 0o644); err != nil {
+	contextPath, err := writeMasterContext(adapter)
+	if err != nil {
 		return err
 	}
 
@@ -58,6 +55,35 @@ func Prepare(name string) error {
 	return nil
 }
 
+func InstallCommands() error {
+	contextPath, err := writeMasterContext(Adapter{Name: "project-local command"})
+	if err != nil {
+		return err
+	}
+
+	commandContent := buildMasterCommand()
+	for _, path := range []string{
+		".bqa/runtime-commands/codex/bqa-master.md",
+		".bqa/runtime-commands/claude/bqa-master.md",
+		".bqa/runtime-commands/opencode/bqa-master.md",
+		".claude/commands/bqa-master.md",
+	} {
+		cleanPath := filepath.Clean(path)
+		if err := os.MkdirAll(filepath.Dir(cleanPath), 0o755); err != nil {
+			return err
+		}
+		if err := os.WriteFile(cleanPath, []byte(commandContent), 0o644); err != nil {
+			return err
+		}
+		fmt.Printf("BQA runtime command written: %s\n", cleanPath)
+	}
+
+	fmt.Printf("BQA master context generated: %s\n", contextPath)
+	fmt.Println("Claude Code can use /bqa-master in this project.")
+	fmt.Println("Codex and OpenCode command helpers are available under .bqa/runtime-commands/.")
+	return nil
+}
+
 func findAdapter(name string) (Adapter, bool) {
 	for _, adapter := range adapters {
 		if adapter.Name == name {
@@ -65,6 +91,19 @@ func findAdapter(name string) (Adapter, bool) {
 		}
 	}
 	return Adapter{}, false
+}
+
+func writeMasterContext(adapter Adapter) (string, error) {
+	if err := os.MkdirAll(filepath.Clean(".bqa/prompts"), 0o755); err != nil {
+		return "", err
+	}
+
+	contextPath := filepath.Clean(masterContextPath)
+	content := buildContext(adapter)
+	if err := os.WriteFile(contextPath, []byte(content), 0o644); err != nil {
+		return "", err
+	}
+	return contextPath, nil
 }
 
 func buildContext(adapter Adapter) string {
@@ -97,4 +136,29 @@ Default behavior:
 - For ambiguous tasks, inspect the repository before selecting a domain.
 - After task completion, propose memory updates for BQA Brain.
 `, adapter.Name)
+}
+
+func buildMasterCommand() string {
+	return `# /bqa-master
+
+Read .bqa/prompts/bqa-master-context.md and act as BQA Master Agent.
+
+Load project-local BQA artifacts before planning:
+
+- .bqa/registry/
+- .bqa/memory/
+- .bqa/agents/
+- .bqa/skills/
+- .bqa/workflows/
+- .bqa/rules/
+- .bqa/guardrails/
+
+Default workflow:
+
+1. Inspect the repository and current task context.
+2. Select the applicable BQA domain workflow.
+3. Create a short plan before changing files.
+4. Execute with tests and reproducible evidence.
+5. Propose BQA Brain memory updates for reusable findings.
+`
 }

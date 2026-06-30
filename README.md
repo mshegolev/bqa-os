@@ -40,6 +40,7 @@ zip -0 archive.zip archive.json
 # 3 · Use the ready agents in Codex
 #    drop archive.zip on the decoder page → ⬇ Download agents.zip → then:
 unzip bqa-os-output.zip -d .bqa/
+bqa runtime install-commands
 bqa codex
 codex exec "$(cat .bqa/prompts/bqa-master-context.md)
 
@@ -79,6 +80,7 @@ Wire it into an AI coding runtime:
 unzip bqa-os-output.zip -d .bqa/
 
 # 2. generate the runtime context (Codex shown; also: bqa claude | bqa opencode)
+bqa runtime install-commands
 bqa codex            # writes .bqa/prompts/bqa-master-context.md
 
 # 3. start Codex with that context + your task
@@ -97,6 +99,38 @@ Task: validate the ETL pipeline and write tests."
 ```
 
 The same artifacts work in **Claude Code** (`bqa claude`) and **OpenCode** (`bqa opencode`).
+
+For a project-local command shortcut, run:
+
+```bash
+bqa runtime install-commands
+```
+
+This writes:
+
+```text
+.bqa/prompts/bqa-master-context.md
+.bqa/runtime-commands/codex/bqa-master.md
+.bqa/runtime-commands/claude/bqa-master.md
+.bqa/runtime-commands/opencode/bqa-master.md
+.claude/commands/bqa-master.md
+```
+
+Claude Code can use `/bqa-master` directly in that project. Codex and OpenCode
+can reference the helper files from `.bqa/runtime-commands/`.
+
+## Emit BQA Team runtime assets
+
+To install the unified BQA Team agents, skills, workflows, guardrails, and
+memory indexes into a project, emit runtime-native files from the BQA registry:
+
+```bash
+bqa emit --registry /path/to/bqa-team/team/brain/registry.json --target .
+```
+
+This writes runtime-native assets under `.claude/`, `.codex/`, and `.opencode/`
+without overwriting user-owned root instruction files such as `CLAUDE.md` or
+`AGENTS.md`.
 
 ## Live demo (GitLab Pages)
 
