@@ -34,6 +34,7 @@ const MAP = [
 
 /* resource nodes: kind -> resource key */
 const NODE_RES = { gold: "features", wood: "prompts", stone: "hardening", mana: "logs" };
+const SURVIVAL_STAGE_WAVES = 3;
 
 const G = {
   state: "ready",          // ready | playing | won | lost
@@ -48,6 +49,7 @@ const G = {
   warlordSeen: false, warlordDead: false,
   mode: "demo",            // demo | survival
   wave: 0, waveGap: 0, wavesSurvived: 0, recorded: false,
+  playerLevel: 1, unlockedStage: 1, stage: 1, startWave: 1,
   dt: 0, last: 0,
 };
 
@@ -197,7 +199,8 @@ function spawnEnemy(type) {
   const d = ENEMY_TYPES[type]; if (!d) return;
   const edges = [{ tx: 0, ty: 0 }, { tx: GW - 1, ty: 0 }, { tx: 0, ty: GH - 1 }, { tx: GW - 1, ty: GH - 1 }];
   const e0 = edges[(G.enemies.length + (d.boss ? 2 : 0)) % edges.length];
-  const e = { type, ...d, maxhp: d.hp, tx: e0.tx, ty: e0.ty, px: isoX(e0.tx, e0.ty), py: isoY(e0.tx, e0.ty) };
+  const stats = scaledEnemyStats(d);
+  const e = { type, ...d, hp: stats.hp, maxhp: stats.hp, dmg: stats.dmg, speed: stats.speed, tx: e0.tx, ty: e0.ty, px: isoX(e0.tx, e0.ty), py: isoY(e0.tx, e0.ty) };
   G.enemies.push(e);
   if (d.boss) G.warlordSeen = true;
   return e;
@@ -390,23 +393,66 @@ function evaluateEnd(dt) {
 }
 /* ---- survival mode --------------------------------------- */
 const sfx = (n) => { try { if (window.AUDIO) window.AUDIO.play(n); } catch (_) {} };
+function stageForWave(wave) {
+  return Math.max(1, Math.floor((Math.max(1, wave) - 1) / SURVIVAL_STAGE_WAVES) + 1);
+}
+function firstWaveForStage(stage) {
+  return (Math.max(1, stage) - 1) * SURVIVAL_STAGE_WAVES + 1;
+}
+function setSurvivalStageForWave(wave) {
+  G.stage = stageForWave(wave);
+  G.phase = Math.min(PHASES.length - 1, G.stage - 1);
+}
+function survivalDifficulty() {
+  const stage = Math.max(1, G.stage || 1), level = Math.max(1, G.playerLevel || 1);
+  // Difficulty scales from both current stage and persistent player level:
+  // stage controls spawn density/unlocks/boss cadence, while level gives a
+  // smaller enemy power multiplier so skipping ahead is progress, not free score.
+  return {
+    density: (stage - 1) * 0.9 + (level - 1) * 0.45,
+    hp: 1 + (stage - 1) * 0.18 + (level - 1) * 0.08,
+    dmg: 1 + (stage - 1) * 0.13 + (level - 1) * 0.06,
+    speed: Math.min(1.45, 1 + (stage - 1) * 0.04 + (level - 1) * 0.02),
+    bossEvery: Math.max(2, 4 - Math.min(2, Math.floor(Math.max(0, stage - 3) / 2))),
+  };
+}
+function scaledEnemyStats(d) {
+  if (G.mode !== "survival") return { hp: d.hp, dmg: d.dmg, speed: d.speed };
+  const scale = survivalDifficulty();
+  return {
+    hp: Math.round(d.hp * scale.hp),
+    dmg: Math.round(d.dmg * scale.dmg),
+    speed: Number((d.speed * scale.speed).toFixed(2)),
+  };
+}
+function applySurvivalStartStage() {
+  G.unlockedStage = Math.max(1, G.playerLevel || 1);
+  G.startWave = firstWaveForStage(G.unlockedStage);
+  G.wave = G.startWave - 1;
+  G.wavesSurvived = Math.max(0, G.wave);
+  setSurvivalStageForWave(G.startWave);
+  if (G.unlockedStage > 1) {
+    logMsg("Player level " + G.playerLevel + " unlocks Stage " + G.unlockedStage + " — starting at wave " + G.startWave + ".", "high");
+  }
+}
 function spawnSurvivalWave() {
   if (G.wave > 0) G.wavesSurvived = G.wave;        // previous wave cleared
   G.wave++;
   const w = G.wave;
+  setSurvivalStageForWave(w);
+  const scale = survivalDifficulty();
   const power = G.units.length;                       // your army size drives the threat
-  const grunts = 1 + Math.floor(w * 0.6 + power * 0.4);
+  const grunts = 1 + Math.floor(w * 0.55 + power * 0.4 + scale.density);
   for (let i = 0; i < grunts; i++) spawnEnemy(i % 4 === 3 ? "regression_raider" : "bug_grunt");
   if (w >= 2 && w % 2 === 0) spawnEnemy("spear_hurler");
   if (w >= 3) spawnEnemy("cve_shaman");
   if (w >= 4 && w % 2 === 0) spawnEnemy("incident_ogre");
   if (w >= 6 && w % 3 === 0) spawnEnemy("tech_debt_troll");
-  if (w >= 8 && w % 4 === 0) spawnEnemy("deadline_warlord");
+  if (w >= 8 && w % scale.bossEvery === 0) spawnEnemy("deadline_warlord");
   // a small free reinforcement keeps passive play viable; real growth = recruiting
   if (w % 2 === 1) spawnUnit(["incident_defender", "sentinel_archer"][(w >> 1) % 2]);
-  G.phase = Math.min(PHASES.length - 1, Math.floor(w / 2));
   G.waveGap = 2.5;
-  logMsg("Wave " + w + " advances — army " + power + " vs " + grunts + "+ orcs.", w % 5 === 0 ? "high" : undefined);
+  logMsg("Stage " + G.stage + " · Wave " + w + " advances — army " + power + " vs " + grunts + "+ orcs.", w % 5 === 0 ? "high" : undefined);
   sfx("wave");
 }
 
@@ -617,6 +663,8 @@ function syncPanels() {
   const tr = $("#r-trust"); tr.textContent = Math.round(G.res.trust) + "%";
   tr.style.color = G.res.trust >= 70 ? PAL.forestBright : G.res.trust < 40 ? PAL.blood : PAL.gold;
   $("#c-hp").textContent = Math.max(0, Math.round(G.castle.hp)) + "%";
+  const lvl = document.getElementById("r-level"); if (lvl) lvl.textContent = String(G.playerLevel || 1);
+  const st = document.getElementById("r-stage"); if (st) st.textContent = G.mode === "survival" ? String(G.stage || 1) : "—";
   const wv = document.getElementById("r-wave"); if (wv) wv.textContent = G.mode === "survival" ? String(G.wave) : "—";
   updateCommands();
   // timeline
@@ -650,6 +698,8 @@ function showModal() {
   card.appendChild(el("p", null, survival ? ("You outlasted " + G.wavesSurvived + " wave" + (G.wavesSurvived === 1 ? "" : "s") + ".") : (G.result || "")));
   const stats = el("ul", "stats");
   if (survival) {
+    stats.appendChild(el("li", null, "Player level: " + (G.playerLevel || 1)));
+    stats.appendChild(el("li", null, "Stage reached: " + (G.stage || 1)));
     stats.appendChild(el("li", null, "Waves survived: " + G.wavesSurvived));
     stats.appendChild(el("li", null, "Reached wave: " + G.wave));
     stats.appendChild(el("li", null, "Final Trust: " + Math.round(G.res.trust) + "%"));
@@ -729,6 +779,7 @@ function onClick(e) {
 /* ---- meta-progression: points + persistent upgrades ------ */
 const PT_KEY = "bqa-citadel-points", UP_KEY = "bqa-citadel-upgrades";
 const UPGRADES = [
+  { key: "level", label: "Player level", glyph: "⚑", desc: "+1 unlocked Survival stage / level" },
   { key: "prompt", label: "Prompt hardening", glyph: "✦", desc: "+8% starting Trust / level" },
   { key: "mcp", label: "MCP relays", glyph: "⛁", desc: "Start with +1 MCP / level" },
   { key: "agents", label: "Standing agents", glyph: "♛", desc: "+1 starting defender / level" },
@@ -736,7 +787,7 @@ const UPGRADES = [
 ];
 function getPoints() { try { return parseInt(localStorage.getItem(PT_KEY) || "0", 10) || 0; } catch (_) { return 0; } }
 function setPoints(n) { try { localStorage.setItem(PT_KEY, String(Math.max(0, Math.floor(n)))); } catch (_) {} }
-function getUpgrades() { try { return Object.assign({ prompt: 0, mcp: 0, agents: 0, workflow: 0 }, JSON.parse(localStorage.getItem(UP_KEY) || "{}")); } catch (_) { return { prompt: 0, mcp: 0, agents: 0, workflow: 0 }; } }
+function getUpgrades() { try { return Object.assign({ level: 0, prompt: 0, mcp: 0, agents: 0, workflow: 0 }, JSON.parse(localStorage.getItem(UP_KEY) || "{}")); } catch (_) { return { level: 0, prompt: 0, mcp: 0, agents: 0, workflow: 0 }; } }
 function setUpgrades(u) { try { localStorage.setItem(UP_KEY, JSON.stringify(u)); } catch (_) {} }
 function upCost(lvl) { return 60 + lvl * 70; }   // proportional cost growth
 function buyUpgrade(key) {
@@ -748,6 +799,8 @@ function buyUpgrade(key) {
 }
 function applyUpgrades() {
   const u = getUpgrades();
+  G.playerLevel = 1 + Math.max(0, u.level || 0);
+  G.unlockedStage = G.playerLevel;
   G.res.trust = clamp(60 + u.prompt * 8, 0, 100);
   for (let i = 0; i < u.mcp; i++) addMCP();
   for (let i = 0; i < u.agents; i++) spawnUnit("incident_defender");
@@ -823,6 +876,7 @@ function renderWarband(elId, archive) {
 }
 function begin() {
   applyUpgrades();
+  if (G.mode === "survival") applySurvivalStartStage();
   G.state = "playing"; G.clock = 0; G.demoIdx = 0; G.last = 0; G.awarded = false;
   $("#start").style.display = "none";
   try { if (window.AUDIO) window.AUDIO.music(true); } catch (_) {}
