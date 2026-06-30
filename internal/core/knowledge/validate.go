@@ -15,9 +15,10 @@ type ValidationIssue struct {
 	Detail   string
 }
 
-// ValidationReport is the result of validating build outputs.
+// ValidationReport is the result of validating build outputs. Valid counts the
+// artifacts that passed every check; Expected is the contract size.
 type ValidationReport struct {
-	Checked  int
+	Valid    int
 	Expected int
 	Issues   []ValidationIssue
 }
@@ -42,8 +43,6 @@ func Validate(ctx context.Context, reader ports.KnowledgeArtifactReader) Validat
 			report.Issues = append(report.Issues, ValidationIssue{Filename: spec.Filename, Detail: "missing or unreadable: " + err.Error()})
 			continue
 		}
-		report.Checked++
-
 		if strings.TrimSpace(content) == "" {
 			report.Issues = append(report.Issues, ValidationIssue{Filename: spec.Filename, Detail: "file is empty"})
 			continue
@@ -56,13 +55,8 @@ func Validate(ctx context.Context, reader ports.KnowledgeArtifactReader) Validat
 			report.Issues = append(report.Issues, ValidationIssue{Filename: spec.Filename, Detail: "missing session count (sessions_analyzed)"})
 			continue
 		}
-	}
-
-	if report.Checked != report.Expected {
-		report.Issues = append(report.Issues, ValidationIssue{
-			Filename: "",
-			Detail:   fmt.Sprintf("artifact count mismatch: found %d of %d expected", report.Checked, report.Expected),
-		})
+		// Passed every check.
+		report.Valid++
 	}
 
 	sort.SliceStable(report.Issues, func(i, j int) bool {

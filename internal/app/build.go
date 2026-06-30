@@ -68,7 +68,7 @@ func runBuildCheck(ctx context.Context, cmd *cobra.Command, store fsadapter.Know
 	report := coreknowledge.Validate(ctx, store)
 
 	fmt.Fprintf(out, "Validating knowledge artifacts in: %s\n", knowledgeDir)
-	fmt.Fprintf(out, "Artifacts found: %d of %d expected\n", report.Checked, report.Expected)
+	fmt.Fprintf(out, "Artifacts valid: %d of %d expected\n", report.Valid, report.Expected)
 
 	if report.OK() {
 		fmt.Fprintln(out, "All knowledge artifacts are present and valid.")

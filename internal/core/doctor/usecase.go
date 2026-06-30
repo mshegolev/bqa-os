@@ -181,8 +181,10 @@ func countIndexEntries(indexPath string) (int, error) {
 // creating and removing a temporary probe file. The parent is created if the
 // knowledge directory itself does not exist yet.
 func checkWritable(knowledgeDir string) (bool, string) {
-	if err := os.MkdirAll(knowledgeDir, 0o755); err != nil {
-		return false, knowledgeDir + " (not writable: " + err.Error() + ")"
+	// doctor is a read-only health check; it must not create the directory as a
+	// side effect. Probe writability only when the directory already exists.
+	if !isDir(knowledgeDir) {
+		return false, knowledgeDir + " (not writable: directory does not exist — run `bqa build`)"
 	}
 	probe := filepath.Join(knowledgeDir, ".bqa-doctor-write-probe")
 	if err := os.WriteFile(probe, []byte("probe"), 0o600); err != nil {
