@@ -6,6 +6,7 @@ import (
 	"path"
 	"strings"
 
+	"github.com/mshegolev/bqa-os/internal/catalog"
 	"github.com/mshegolev/bqa-os/internal/ports"
 	"github.com/mshegolev/bqa-os/internal/textutil"
 )
@@ -40,11 +41,11 @@ func (u UseCase) Run(ctx context.Context) (Result, error) {
 
 	artifacts := map[string]string{
 		"statistics/summary.md":                              summary(stats),
-		"agents/codex-etl-qa-agent.md":                       codexAgent(),
-		"agents/claude-code-etl-qa-agent.md":                 claudeCodeAgent(),
-		"workflows/etl-regression-workflow.md":               etlRegressionWorkflow(),
-		"workflows/data-reconciliation-workflow.md":          dataReconciliationWorkflow(),
-		"workflows/data-quality-validation-workflow.md":      dataQualityValidationWorkflow(),
+		"agents/codex-etl-qa-agent.md":                       catalog.RenderAgent(catalog.ETLQA(), catalog.CodexFlavor()),
+		"agents/claude-code-etl-qa-agent.md":                 catalog.RenderAgent(catalog.ETLQA(), catalog.ClaudeFlavor()),
+		"workflows/etl-regression-workflow.md":               catalog.Workflow("etl-regression-workflow").Content,
+		"workflows/data-reconciliation-workflow.md":          catalog.Workflow("data-reconciliation-workflow").Content,
+		"workflows/data-quality-validation-workflow.md":      catalog.Workflow("data-quality-validation-workflow").Content,
 		"specs/etl-test-spec-template.md":                    etlTestSpecTemplate(),
 		"specs/source-to-target-mapping-review-checklist.md": sourceToTargetChecklist(),
 		"prompts/codex-etl-qa-agent-prompt.md":               codexPrompt(),
@@ -166,72 +167,6 @@ Knowledge artifacts found: %d
 - No raw normalized session content is copied into this pack.
 - Examples in this pack are synthetic and safe for public demos.
 `, sourceMode, stats.sessionsProcessed, stats.knowledgeArtifactsFound, stats.etlSignals, stats.reconciliationSignals, stats.dataQualitySignals, stats.regressionSignals)
-}
-
-func codexAgent() string {
-	return `# Codex ETL QA Agent
-
-## Role
-
-You are an ETL QA Agent working in Codex. Validate ETL changes with evidence from configs, source data, target data, scheduler state, logs, and reproducible commands.
-
-## Operating Rules
-
-- Keep private data, raw logs, secrets, and customer records out of generated artifacts.
-- Prefer local repository tools and existing test commands before inventing new helpers.
-- Produce concise QA reports with scope, checks, evidence, result, risks, and next action.
-- When inputs are missing, use the synthetic example in this pack to demonstrate the workflow.
-`
-}
-
-func claudeCodeAgent() string {
-	return `# Claude Code ETL QA Agent
-
-## Role
-
-You are an ETL QA Agent working in Claude Code. Turn ETL tickets, sanitized notes, and local knowledge into repeatable validation steps.
-
-## Operating Rules
-
-- Keep public repo output synthetic or aggregate-only.
-- Follow the project tooling and test framework already present in the repository.
-- Ask a blocker question when environment, dataset, acceptance criteria, or destructive actions are unclear.
-- Summarize files changed, tests run, evidence found, and remaining risks.
-`
-}
-
-func etlRegressionWorkflow() string {
-	return `# ETL Regression Workflow
-
-1. Identify ticket, ETL name, environment, source tables, target tables, partition window, and acceptance criteria.
-2. Check the repository diff, config changes, scheduler changes, and migration notes.
-3. Run the smallest available automated regression checks.
-4. Compare source and target row counts for the target partition window.
-5. Review failed rows, schema drift, nullability, duplicate keys, and checksum deltas.
-6. Record evidence, result, risk, and follow-up owner.
-`
-}
-
-func dataReconciliationWorkflow() string {
-	return `# Data Reconciliation Workflow
-
-1. Define source query, target query, join keys, partition filters, and tolerated deltas.
-2. Capture source row count, target row count, distinct key count, and duplicate key count.
-3. Compare numeric aggregates and checksums for high-value fields.
-4. Sample mismatched rows using synthetic-safe examples or sanitized values only.
-5. Document exact commands, counts, mismatch class, and whether reprocessing is required.
-`
-}
-
-func dataQualityValidationWorkflow() string {
-	return `# Data Quality Validation Workflow
-
-1. List required not-null fields, unique keys, reference fields, and accepted value ranges.
-2. Check schema compatibility between source, transformation, and target.
-3. Run null, duplicate, type, range, freshness, and referential integrity checks.
-4. Separate source-quality defects from ETL transformation defects.
-5. Report failed rules with counts, severity, reproducible query, and owner.
-`
 }
 
 func etlTestSpecTemplate() string {

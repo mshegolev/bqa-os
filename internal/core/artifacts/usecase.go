@@ -3,6 +3,7 @@ package artifacts
 import (
 	"context"
 
+	"github.com/mshegolev/bqa-os/internal/catalog"
 	"github.com/mshegolev/bqa-os/internal/ports"
 )
 
@@ -17,16 +18,16 @@ type Result struct {
 
 func (u UseCase) Run(ctx context.Context) (Result, error) {
 	artifacts := map[string]string{
-		"skills/etl-log-investigation.md":         etlSkill(),
-		"skills/runtime-trace-review.md":          runtimeSkill(),
-		"agents/etl-qa-agent.md":                  etlAgent(),
-		"agents/runtime-agent.md":                 runtimeAgent(),
-		"workflows/etl-verification-workflow.md":  etlWorkflow(),
-		"workflows/session-knowledge-workflow.md": sessionWorkflow(),
+		"skills/etl-log-investigation.md":         catalog.Skill("etl-log-investigation").Content,
+		"skills/runtime-trace-review.md":          catalog.Skill("runtime-trace-review").Content,
+		"agents/etl-qa-agent.md":                  catalog.RenderAgent(catalog.ETLQA(), nil),
+		"agents/runtime-agent.md":                 catalog.RuntimeAgentContent(),
+		"workflows/etl-verification-workflow.md":  catalog.Workflow("etl-verification-workflow").Content,
+		"workflows/session-knowledge-workflow.md": catalog.Workflow("session-knowledge-workflow").Content,
 		"registry/index.yaml":                     registryIndex(),
-		"registry/skills.yaml":                    registrySkills(),
-		"registry/agents.yaml":                    registryAgents(),
-		"registry/workflows.yaml":                 registryWorkflows(),
+		"registry/skills.yaml":                    catalog.RegistrySkillsYAML(),
+		"registry/agents.yaml":                    catalog.RegistryAgentsYAML(),
+		"registry/workflows.yaml":                 catalog.RegistryWorkflowsYAML(),
 	}
 
 	if u.IncludeSalesPackage {
@@ -49,30 +50,6 @@ func (u UseCase) Run(ctx context.Context) (Result, error) {
 		created++
 	}
 	return Result{ArtifactsCreated: created}, nil
-}
-
-func etlSkill() string {
-	return "# ETL Log Investigation\n\n## Purpose\n\nInvestigate Big Data and ETL testing failures using logs, row counts, schemas, partitions, and reproducible commands.\n\n## Procedure\n\n1. Identify environment, dataset, job, partition, and failing step.\n2. Collect scheduler, Spark, Hive, and application logs.\n3. Compare source and target row counts, schema expectations, nulls, duplicates, and reprocessing windows.\n4. Capture exact evidence paths, commands, expected results, and actual results.\n"
-}
-
-func runtimeSkill() string {
-	return "# Runtime Trace Review\n\n## Purpose\n\nReview AI coding runtime sessions and extract reusable engineering memory.\n\n## Procedure\n\n1. Identify runtime source and workspace context.\n2. Map user intent, tool calls, shell commands, approvals, and failures.\n3. Extract reusable prompts, recovery steps, constraints, and guardrails.\n4. Keep raw private content out of public repositories.\n"
-}
-
-func etlAgent() string {
-	return "# ETL QA Agent\n\n## Role\n\nSpecialist agent for Big Data, ETL, Airflow, Spark, Hive, reconciliation, and data quality validation tasks.\n\n## Responsibilities\n\n- Build concise investigation plans.\n- Prefer commands, logs, row counts, schema evidence, and reproducible checks.\n- Report risk, evidence, and next actions clearly.\n"
-}
-
-func runtimeAgent() string {
-	return "# Runtime Agent\n\n## Role\n\nSpecialist agent for AI coding session review and runtime trace analysis.\n\n## Responsibilities\n\n- Review normalized sessions and runtime traces.\n- Extract reusable prompts, failures, fixes, and workflow patterns.\n- Propose updates to skills, workflows, rules, and guardrails.\n"
-}
-
-func etlWorkflow() string {
-	return "# ETL Verification Workflow\n\n1. Identify ticket, dataset, environment, job, and partition.\n2. Collect relevant logs and execution metadata.\n3. Validate source availability, target output, row counts, schema, and data quality checks.\n4. Isolate the smallest failing condition.\n5. Produce a QA report with evidence and next actions.\n"
-}
-
-func sessionWorkflow() string {
-	return "# Session Knowledge Workflow\n\n1. Run `bqa discover`.\n2. Run `bqa ingest`.\n3. Run `bqa build`.\n4. Review generated knowledge, skills, agents, and workflows.\n5. Sanitize before syncing reusable knowledge to Brain.\n"
 }
 
 func pilotOfferOnePager() string {
@@ -109,18 +86,6 @@ func registryIndex() string {
 
 func registryIndexWithSales() string {
 	return "registry:\n  version: 1\n  skills: registry/skills.yaml\n  agents: registry/agents.yaml\n  workflows: registry/workflows.yaml\n  sales: registry/sales.yaml\n  knowledge: knowledge/project_profile.yaml\n"
-}
-
-func registrySkills() string {
-	return "skills:\n  - id: etl-log-investigation\n    path: skills/etl-log-investigation.md\n    domain: etl\n  - id: runtime-trace-review\n    path: skills/runtime-trace-review.md\n    domain: runtime\n"
-}
-
-func registryAgents() string {
-	return "agents:\n  - id: etl-qa-agent\n    path: agents/etl-qa-agent.md\n    domain: etl\n  - id: runtime-agent\n    path: agents/runtime-agent.md\n    domain: runtime\n"
-}
-
-func registryWorkflows() string {
-	return "workflows:\n  - id: etl-verification-workflow\n    path: workflows/etl-verification-workflow.md\n    domain: etl\n  - id: session-knowledge-workflow\n    path: workflows/session-knowledge-workflow.md\n    domain: memory\n"
 }
 
 func registrySales() string {
