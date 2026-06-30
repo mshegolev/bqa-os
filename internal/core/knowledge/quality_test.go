@@ -4,9 +4,22 @@ import (
 	"context"
 	"strings"
 	"testing"
+	"unicode/utf8"
 
 	"github.com/mshegolev/bqa-os/internal/ports"
 )
+
+// TestEvidenceNeedlePathProducesValidUTF8 guards the byte-offset evidence window
+// against splitting a multi-byte rune when it slices around a matched needle.
+func TestEvidenceNeedlePathProducesValidUTF8(t *testing.T) {
+	// Place a 3-byte em-dash so the lead-in subtraction risks landing mid-rune.
+	prefix := strings.Repeat("x", 118) + "—"
+	fixture := prefix + " reconciliation row count schema drift " + strings.Repeat("y", 500)
+	got := evidence(cleanEvidenceText(fixture), "reconciliation")
+	if !utf8.ValidString(got) {
+		t.Fatalf("evidence() produced invalid UTF-8: %q", got)
+	}
+}
 
 // The fixtures in this file are 100% synthetic. They contain no real customer
 // data, session logs, credentials, or PII. They exist to prove that the

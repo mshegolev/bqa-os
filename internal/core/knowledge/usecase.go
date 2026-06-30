@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"sort"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/mshegolev/bqa-os/internal/ports"
 	"github.com/mshegolev/bqa-os/internal/textutil"
@@ -330,6 +331,14 @@ func evidence(text string, needle string) string {
 	end := start + evidenceWindow
 	if end > len(text) {
 		end = len(text)
+	}
+	// Snap both offsets to valid rune boundaries so a multi-byte character is
+	// never split (real session content contains non-ASCII).
+	for start > 0 && !utf8.RuneStart(text[start]) {
+		start--
+	}
+	for end < len(text) && !utf8.RuneStart(text[end]) {
+		end++
 	}
 	return strings.TrimSpace(text[start:end])
 }
