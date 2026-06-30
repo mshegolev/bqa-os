@@ -1,0 +1,264 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>BQA-OS · 2-Week QA Memory Pilot</title>
+  <meta name="description" content="Turn scattered QA history into reusable QA memory. A 2-week, local-first QA Memory Pilot for QA teams testing APIs, GraphQL and data pipelines. Bring 10–30 sanitized QA artifacts, get reusable QA memory plus 3–5 workflows out.">
+  <link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
+  <link rel="stylesheet" href="assets/pixel.css">
+  <style>
+    /* Page-local styles — kept inline to avoid pixel.css merge conflicts. */
+    .hero { margin: 0 0 22px; }
+    .hero .buyer { font-family: var(--font-body); font-size: 18px; color: var(--forest-bright); letter-spacing: 1px; text-transform: uppercase; margin: -2px 0 14px; }
+    .hero p.lede { font-size: 20px; color: var(--parchment); max-width: 720px; }
+
+    .cta-stack { display: flex; gap: 12px; flex-wrap: wrap; margin: 18px 0 6px; }
+    .cta-stack .btn { font-size: 18px; padding: 14px 18px; }
+    .cta-note { font-size: 16px; color: var(--parchment-dim); margin: 6px 0 0; }
+
+    .cols2 { display: grid; gap: 18px; grid-template-columns: 1fr; }
+    @media (min-width: 820px) { .cols2 { grid-template-columns: 1fr 1fr; align-items: start; } }
+    .cols3 { display: grid; gap: 14px; grid-template-columns: 1fr; margin: 8px 0; }
+    @media (min-width: 720px) { .cols3 { grid-template-columns: repeat(3, 1fr); } }
+
+    .io { background: rgba(0,0,0,.25); padding: 14px; box-shadow: inset 2px 2px 0 var(--bevel-light), inset -2px -2px 0 var(--bevel-dark); }
+    .io b { font-family: var(--font-body); font-weight: 700; text-transform: uppercase; font-size: 17px; color: var(--gold); display: block; margin-bottom: 8px; }
+    .io small { font-size: 16px; color: var(--parchment-dim); }
+
+    ul.list { list-style: none; padding: 0; margin: 0; }
+    ul.list li { padding: 6px 0 6px 18px; position: relative; font-size: 18px; color: var(--parchment); }
+    ul.list li::before { content: "»"; position: absolute; left: 0; color: var(--forest-bright); }
+
+    ul.files { list-style: none; padding: 0; margin: 0; }
+    ul.files li { padding: 6px 4px; border-bottom: 2px solid rgba(0,0,0,.3); font-size: 18px; }
+    ul.files code { color: var(--gold); }
+
+    .flow { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 6px 0 4px; }
+    .flow code { background: #14110d; color: var(--forest-bright); padding: 10px 13px; font-size: 16px; border-left: var(--px) solid var(--gold); box-shadow: inset 2px 2px 0 var(--bevel-dark); }
+    .flow .arrow { color: var(--gold); font-size: 18px; }
+
+    pre.yaml { background: var(--stone-900); color: var(--forest-bright); padding: 14px; overflow-x: auto; font-size: 15px; line-height: 1.45; box-shadow: inset 2px 2px 0 var(--bevel-dark); margin: 8px 0 0; }
+    pre.yaml .k { color: var(--gold); }
+    pre.yaml .c { color: var(--stone-500); }
+
+    .privacy { border-color: var(--forest); }
+    .privacy .panel-title { color: var(--forest-bright); }
+
+    details.faq { background: rgba(0,0,0,.2); padding: 4px 14px; box-shadow: inset 2px 2px 0 var(--bevel-dark); margin: 0 0 10px; }
+    details.faq summary { cursor: pointer; font-family: var(--font-body); font-weight: 700; font-size: 18px; color: var(--gold); padding: 10px 0; }
+    details.faq p { font-size: 17px; margin: 0 0 12px; }
+
+    .request-template { position: relative; }
+    .request-template pre { background: var(--stone-900); color: var(--parchment); padding: 14px; overflow-x: auto; font-size: 15px; line-height: 1.5; box-shadow: inset 2px 2px 0 var(--bevel-dark); margin: 10px 0 0; white-space: pre-wrap; }
+
+    .qual { font-size: 17px; }
+    .qual li { padding-bottom: 6px; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="topbar">
+      <div class="brand"><div class="sigil pixel"></div><b>BQA-OS · QA Memory Pilot</b></div>
+      <nav class="nav">
+        <a class="btn" href="#apply">⚑ Apply for pilot</a>
+        <a class="btn secondary" href="index.html">⬆ Demo</a>
+        <a class="btn secondary" href="game.html">⚔ Battle</a>
+        <a class="btn secondary" href="https://github.com/mshegolev/bqa-os">Repo</a>
+      </nav>
+    </div>
+
+    <!-- 1 · Hero ------------------------------------------------ -->
+    <section class="hero">
+      <p class="eyebrow">2-week QA Memory Pilot · local-first</p>
+      <h1>Turn scattered QA history into reusable QA memory</h1>
+      <p class="buyer">For QA teams testing APIs, GraphQL and data pipelines</p>
+      <p class="lede">Your team has already done the hard QA work — bug reports, regression notes,
+        debugging sessions and the prompts that actually worked. BQA-OS turns that history into a
+        structured, reusable QA memory and a handful of workflows your team can run again.</p>
+      <div class="cta-stack">
+        <a class="btn" href="#apply">⚑ Apply for the 2-week paid pilot</a>
+        <a class="btn secondary" href="#audit">◷ Book a 20-min QA Memory Audit</a>
+      </div>
+      <p class="cta-note">No backend, no data leaves your machine during the demo. See the
+        <a href="index.html">live demo</a> or the <a href="game.html">Agent Citadel battle</a>.</p>
+    </section>
+
+    <!-- 2 · Problem -------------------------------------------- -->
+    <section class="panel">
+      <div class="panel-title">◆ The problem</div>
+      <p>QA knowledge is real, but it is scattered. Bug reports live in the tracker, regression
+        notes in a wiki, debugging context in chat threads, and the prompts that unblocked a tricky
+        test only exist in someone's terminal history. When people switch teams or the sprint moves
+        on, that context is lost and the next engineer re-discovers the same bug from scratch.</p>
+      <div class="cols3">
+        <div class="io"><b>Scattered</b><small>Bug reports, regression notes, prompts and session logs sit in five different tools.</small></div>
+        <div class="io"><b>Lost on handoff</b><small>QA context walks out the door when people change teams or projects.</small></div>
+        <div class="io"><b>Re-done work</b><small>The same API contract bug or ETL reconciliation gap gets re-investigated each quarter.</small></div>
+      </div>
+    </section>
+
+    <!-- 3 · Pilot offer (input -> output) ---------------------- -->
+    <section class="panel">
+      <div class="panel-title">⚑ The pilot — input → output</div>
+      <p>A focused, time-boxed engagement. You bring sanitized QA artifacts; we run the local-first
+        BQA-OS flow with you and hand back a reusable QA memory plus a few workflows.</p>
+      <div class="cols2">
+        <div class="io">
+          <b>You bring in (10–30 sanitized artifacts)</b>
+          <ul class="list">
+            <li>Bug reports / defect write-ups</li>
+            <li>Regression checklists and test notes</li>
+            <li>API / GraphQL contract or functional test notes</li>
+            <li>ETL / data-quality validation findings</li>
+            <li>Sanitized debugging or QA session transcripts</li>
+            <li>Prompts that actually worked for your team</li>
+          </ul>
+        </div>
+        <div class="io">
+          <b>You get out (reusable QA memory + 3–5 workflows)</b>
+          <ul class="files">
+            <li><code>project_profile.yaml</code> — what this product is and how it's tested</li>
+            <li><code>common_bugs.yaml</code> — recurring failure patterns</li>
+            <li><code>graphql_patterns.yaml</code> — GraphQL functional test patterns</li>
+            <li><code>etl_patterns.yaml</code> — ETL / data-quality validation patterns</li>
+            <li><code>successful_prompts.yaml</code> — prompts that produced good QA output</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- 4 · Example output ------------------------------------- -->
+    <section class="panel">
+      <div class="panel-title">◆ Example output (illustrative / synthetic)</div>
+      <p>A generated knowledge artifact looks roughly like this. The example below is generic and
+        synthetic — it contains no real customer data:</p>
+      <pre class="yaml"><span class="c"># common_bugs.yaml — illustrative example, synthetic data</span>
+<span class="k">domain:</span> api
+<span class="k">patterns:</span>
+  <span class="k">- id:</span> wrong-http-status-on-validation-error
+    <span class="k">summary:</span> Endpoint returns 200 with an error body instead of 4xx
+    <span class="k">seen_in:</span> [contract-tests, regression]
+    <span class="k">check:</span> Assert status code AND error schema, not just body text
+  <span class="k">- id:</span> pagination-cursor-drift
+    <span class="k">summary:</span> Cursor pagination skips rows when source is written during paging
+    <span class="k">seen_in:</span> [etl-reconciliation]
+    <span class="k">check:</span> Snapshot count before paging; reconcile totals after</pre>
+    </section>
+
+    <!-- 5 · Demo flow ------------------------------------------ -->
+    <section class="panel">
+      <div class="panel-title">▶ The local CLI flow</div>
+      <p>The pilot runs on your machine. Three commands, nothing uploaded:</p>
+      <div class="flow">
+        <code>bqa discover</code><span class="arrow">→</span>
+        <code>bqa ingest2</code><span class="arrow">→</span>
+        <code>bqa build</code>
+      </div>
+      <ul class="list" style="margin-top:10px">
+        <li><code>bqa discover</code> — find QA-relevant sessions and artifacts locally</li>
+        <li><code>bqa ingest2</code> — read the sanitized artifacts you selected</li>
+        <li><code>bqa build</code> — produce the QA memory specs and workflows above</li>
+      </ul>
+      <p class="cta-note">Want to feel it first? The <a href="index.html">browser demo</a> runs the
+        decode step entirely client-side on synthetic data.</p>
+    </section>
+
+    <!-- 6 · Privacy -------------------------------------------- -->
+    <section class="panel privacy">
+      <div class="panel-title">🛡 Privacy — local-first by design</div>
+      <ul class="list">
+        <li>The flow runs on your machine. No backend in this repo collects or stores your data.</li>
+        <li>You decide what to share. Bring only sanitized artifacts — no secrets, no real customer records.</li>
+        <li>Public examples on this site are synthetic and generic, never real session logs.</li>
+        <li>This page is static GitHub Pages content. Submitting interest is a plain email or template you control.</li>
+      </ul>
+    </section>
+
+    <!-- 7 · CTA / lead capture --------------------------------- -->
+    <section class="panel" id="apply">
+      <div class="panel-title">⚑ Apply for the 2-week QA Memory Pilot</div>
+      <p>Two ways to start. Both are simple, privacy-safe, and need nothing more than email — no
+        account, no backend, no tracking.</p>
+
+      <div class="cta-stack">
+        <!-- TODO: replace the mailto address below with the real pilot inbox before publishing. -->
+        <a class="btn" href="mailto:bqa-os-pilot@example.com?subject=BQA-OS%202-week%20QA%20Memory%20Pilot%20application&amp;body=Team%2Fproduct%3A%20%0ATest%20surfaces%20(API%2FGraphQL%2FETL%2Fother)%3A%20%0AArtifacts%20we%20can%20sanitize%20(count%20%26%20types)%3A%20%0ABiggest%20QA%20context%20we%20keep%20losing%3A%20%0APreferred%20pilot%20start%20week%3A%20">
+          ✉ Apply by email
+        </a>
+        <a class="btn secondary" id="audit" href="mailto:bqa-os-pilot@example.com?subject=BQA-OS%2020-min%20QA%20Memory%20Audit&amp;body=Team%2Fproduct%3A%20%0AWhat%20we%20test%20most%3A%20%0ATwo%20time%20slots%20that%20work%3A%20">
+          ◷ Book a 20-min QA Memory Audit
+        </a>
+      </div>
+      <p class="cta-note">Prefer not to email yet? Open a public
+        <a href="https://github.com/mshegolev/bqa-os/issues/new">demo-feedback issue</a> on the repo
+        — for public demo feedback only, never private client data.</p>
+
+      <h3 style="margin-top:18px">What happens next</h3>
+      <ul class="list qual">
+        <li>We do a 20-minute fit check: is your QA history a good match for reusable memory?</li>
+        <li>You sanitize and select 10–30 artifacts (we'll send a short checklist of what to send and what to leave out).</li>
+        <li>Over ~2 weeks we run <code>bqa discover → ingest2 → build</code> with you and hand back the QA memory + 3–5 workflows.</li>
+        <li>You keep everything. The pilot is paid and time-boxed — not an open-ended free trial.</li>
+      </ul>
+
+      <h3 style="margin-top:18px">A few questions we'll ask first</h3>
+      <ul class="list qual">
+        <li>What do you test most — APIs, GraphQL, ETL / data pipelines, or a mix?</li>
+        <li>Where does QA context get lost today (handoffs, tool sprawl, sprint churn)?</li>
+        <li>Roughly how many artifacts can you sanitize and share?</li>
+        <li>Who owns the pilot on your side, and what would make it worth paying for?</li>
+      </ul>
+
+      <h3 style="margin-top:18px">Copyable pilot request template</h3>
+      <p class="cta-note">No email client handy? Copy this, fill it in, and send it however you like:</p>
+      <div class="request-template">
+        <pre id="tpl">Subject: BQA-OS 2-week QA Memory Pilot application
+
+Team / product:
+Test surfaces (API / GraphQL / ETL / other):
+Artifacts we can sanitize (count &amp; types):
+Biggest QA context we keep losing:
+Preferred pilot start week:</pre>
+        <div class="cta-stack" style="margin-top:10px">
+          <button class="btn secondary" onclick="navigator.clipboard.writeText(document.getElementById('tpl').textContent).then(()=>{this.textContent='Copied ✓';setTimeout(()=>{this.textContent='⧉ Copy template'},1500)})">⧉ Copy template</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- 8 · FAQ ------------------------------------------------ -->
+    <section class="panel">
+      <div class="panel-title">? FAQ</div>
+      <details class="faq">
+        <summary>What data do I need to prepare?</summary>
+        <p>10–30 sanitized QA artifacts: bug reports, regression checklists, test notes, sanitized
+          QA/debugging sessions, and any prompts that worked well. Quality beats volume.</p>
+      </details>
+      <details class="faq">
+        <summary>What should I NOT send?</summary>
+        <p>No secrets, credentials, tokens, or real customer records. No raw production logs. If an
+          artifact can't be sanitized in a couple of minutes, leave it out — we'd rather have less
+          data than risky data.</p>
+      </details>
+      <details class="faq">
+        <summary>How long does the pilot take?</summary>
+        <p>About two weeks, time-boxed. A 20-minute fit check first, then the build runs over the
+          following days with a working session or two.</p>
+      </details>
+      <details class="faq">
+        <summary>What does it cost?</summary>
+        <p>The pilot is paid and scoped to a fixed fee — not an open-ended free trial. We share the
+          current pilot price on the fit-check call so it matches your scope. (Pricing is a working
+          hypothesis while we run the first pilots.)</p>
+      </details>
+      <details class="faq">
+        <summary>Will this replace my QA engineers?</summary>
+        <p>No. BQA-OS captures and reuses QA knowledge so your team moves faster — it does not run
+          autonomous QA or replace engineers, and the MVP does not ship enterprise integrations.</p>
+      </details>
+    </section>
+
+    <footer class="foot">BQA-OS · 2-week QA Memory Pilot · local-first · synthetic examples only</footer>
+  </div>
+</body>
+</html>
