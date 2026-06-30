@@ -473,9 +473,11 @@ function loadOfficial() {
   } catch (_) {}
 }
 function getScores() { try { return JSON.parse(localStorage.getItem(LB_KEY) || "[]"); } catch (_) { return []; } }
+function tookLead(waves) { return waves > 0 && (!G.official.length || waves > G.official[0].waves); }
 function recordScore(waves) {
   let name = "You";
   const beatsOfficial = waves > 0 && (G.official.length < 3 || waves > G.official[G.official.length - 1].waves);
+  const lead = tookLead(waves);
   try {
     if (typeof window !== "undefined" && window.prompt) {
       const n = window.prompt((beatsOfficial ? "New top-3! " : "") + "You survived " + waves + " waves. Enter your name:", "");
@@ -488,13 +490,14 @@ function recordScore(waves) {
     s.sort((a, b) => b.waves - a.waves);
     localStorage.setItem(LB_KEY, JSON.stringify(s.slice(0, 10)));
   } catch (_) {}
-  G.lastRecord = { name, waves, beatsOfficial };
+  G.lastRecord = { name, waves, beatsOfficial, tookLead: lead };
 }
-function renderLeaderboard(box) {
+function renderLeaderboard(box, opts) {
   if (!box) return;
+  const highlightLead = !!(opts && opts.highlightLead);
   box.replaceChildren();
   (G.official || []).slice(0, 3).forEach((r, i) => {
-    const row = el("div", "lb-row");
+    const row = el("div", "lb-row" + (highlightLead && i === 0 ? " lead-in" : ""));
     row.appendChild(el("span", "lb-rank", ["🥇", "🥈", "🥉"][i] || ("#" + (i + 1))));
     row.appendChild(el("span", "lb-waves", (r.name || "—") + " — " + r.waves + " waves"));
     box.appendChild(row);
@@ -648,7 +651,8 @@ function loop(ts) {
   if (G.state === "won" || G.state === "lost") {
     if (G.mode === "survival" && !G.recorded) { if (G.state === "lost") recordScore(G.wavesSurvived); G.recorded = true; }
     if (!G.awarded) { awardPoints(); G.awarded = true; }
-    sfx(G.state === "won" ? "win" : "lose");
+    // Suppress the defeat sting when the run took the #1 spot — the fanfare in showModal owns the moment.
+    if (!(G.lastRecord && G.lastRecord.tookLead)) sfx(G.state === "won" ? "win" : "lose");
     return showModal();
   }
   requestAnimationFrame(loop);
@@ -689,6 +693,27 @@ function renderEventLog() {
   const box = $("#eventlog"); box.replaceChildren();
   for (const e of G.log) { const li = el("div", "ev" + (e.sev ? " sev-" + e.sev : "")); li.textContent = "» " + e.msg; box.appendChild(li); }
 }
+function spawnConfetti() {
+  try {
+    if (typeof document === "undefined" || !document.body) return;
+    if (typeof window !== "undefined" && window.matchMedia) {
+      const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
+      if (mq && mq.matches) return;
+    }
+    const wrap = el("div", "confetti-wrap"); wrap.id = "confetti";
+    const colors = ["#f2c14e", "#7bc45a", "#8fd0ff", "#e7d9b0", "#c0392b"];
+    for (let i = 0; i < 60; i++) {
+      const p = el("span", "confetti");
+      p.style.left = (Math.random() * 100) + "%";
+      p.style.background = colors[i % colors.length];
+      p.style.animationDelay = (Math.random() * 0.6).toFixed(2) + "s";
+      p.style.animationDuration = (1.8 + Math.random() * 1.4).toFixed(2) + "s";
+      wrap.appendChild(p);
+    }
+    document.body.appendChild(wrap);
+    setTimeout(() => { try { if (wrap.remove) wrap.remove(); } catch (_) {} }, 4200);
+  } catch (_) {}
+}
 function showModal() {
   render();
   const m = $("#modal"); m.style.display = "grid"; m.replaceChildren();
@@ -712,8 +737,10 @@ function showModal() {
   card.appendChild(stats);
   card.appendChild(el("p", "newtop", "★ Earned " + (G.earnedPoints || 0) + " points" + (G.broughtArchive ? " (incl. +25% for your own agents)" : "") + "."));
   if (survival) {
-    if (G.lastRecord && G.lastRecord.beatsOfficial) card.appendChild(el("p", "newtop", "🏆 New official top-3 — " + G.lastRecord.name + ", " + G.lastRecord.waves + " waves! It will be committed to the git leaderboard."));
-    card.appendChild(el("div", "panel-title", "★ Leaderboard")); const lb = el("div", "lb"); renderLeaderboard(lb); card.appendChild(lb);
+    const lead = !!(G.lastRecord && G.lastRecord.tookLead);
+    if (G.lastRecord && G.lastRecord.beatsOfficial) card.appendChild(el("p", "newtop", (lead ? "👑 New #1 — " : "🏆 New official top-3 — ") + G.lastRecord.name + ", " + G.lastRecord.waves + " waves! It will be committed to the git leaderboard."));
+    card.appendChild(el("div", "panel-title", "★ Leaderboard")); const lb = el("div", "lb"); renderLeaderboard(lb, { highlightLead: lead }); card.appendChild(lb);
+    if (lead) { sfx("fanfare"); spawnConfetti(); }
   }
   card.appendChild(el("div", "panel-title", "⚒ Armory — spend points to upgrade")); const arm = el("div", "armory"); arm.id = "upgrades-modal"; renderArmory(arm); card.appendChild(arm);
   const btn = el("button", "btn", "⟲ Play again"); btn.addEventListener("click", () => location.reload());
@@ -877,7 +904,7 @@ function renderWarband(elId, archive) {
 function begin() {
   applyUpgrades();
   if (G.mode === "survival") applySurvivalStartStage();
-  G.state = "playing"; G.clock = 0; G.demoIdx = 0; G.last = 0; G.awarded = false;
+  G.state = "playing"; G.clock = 0; G.demoIdx = 0; G.last = 0; G.awarded = false; G.lastRecord = null;
   $("#start").style.display = "none";
   try { if (window.AUDIO) window.AUDIO.music(true); } catch (_) {}
   syncPanels(); requestAnimationFrame(loop);

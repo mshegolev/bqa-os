@@ -59,6 +59,12 @@
     else if (name === "kill") { tone(220, 0.12, "sawtooth", 0, 0.18); tone(120, 0.14, "sawtooth", now + 0.05, 0.15); }
     else if (name === "wave") { tone(98, 0.32, "sawtooth", 0, 0.2); tone(146, 0.32, "sawtooth", now + 0.16, 0.17); }
     else if (name === "win") { [523, 659, 784, 1047].forEach((f, i) => tone(f, 0.18, "square", now + i * 0.12, 0.16)); music(false); }
+    else if (name === "fanfare") {
+      music(false);
+      // Triumphant ascending arpeggio, longer & higher than "win", with a held top note.
+      [523, 659, 784, 1047, 1319, 1568].forEach((f, i) => tone(f, 0.22, "square", now + i * 0.1, 0.18));
+      tone(2093, 0.6, "square", now + 0.6, 0.16); tone(1568, 0.6, "triangle", now + 0.6, 0.12);
+    }
     else if (name === "lose") { [392, 330, 262, 196].forEach((f, i) => tone(f, 0.26, "triangle", now + i * 0.14, 0.16)); music(false); }
   }
 
