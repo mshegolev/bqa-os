@@ -134,19 +134,19 @@ func (u UseCase) Run(ctx context.Context, ref ports.TeamIssueRef, opts Options) 
 		plan.Actions = append(plan.Actions, businessAcceptanceActions()...)
 	case "qa-failed":
 		plan.Actions = append(plan.Actions, developmentActions(subagent, verification, true)...)
-		plan.Actions = append(plan.Actions, qaActions(issue, ref.Repo, verification)...)
+		plan.Actions = append(plan.Actions, qaActions(issue, ref.Repo, verification, true)...)
 		plan.Actions = append(plan.Actions, businessHandoffActions()...)
 	case "ready-qa":
-		plan.Actions = append(plan.Actions, qaActions(issue, ref.Repo, verification)...)
+		plan.Actions = append(plan.Actions, qaActions(issue, ref.Repo, verification, false)...)
 		plan.Actions = append(plan.Actions, businessHandoffActions()...)
 	case "in-dev":
 		plan.Actions = append(plan.Actions, developerRunAction(subagent, verification))
 		plan.Actions = append(plan.Actions, qaHandoffAction())
-		plan.Actions = append(plan.Actions, qaActions(issue, ref.Repo, verification)...)
+		plan.Actions = append(plan.Actions, qaActions(issue, ref.Repo, verification, false)...)
 		plan.Actions = append(plan.Actions, businessHandoffActions()...)
 	case "ready-dev":
 		plan.Actions = append(plan.Actions, developmentActions(subagent, verification, false)...)
-		plan.Actions = append(plan.Actions, qaActions(issue, ref.Repo, verification)...)
+		plan.Actions = append(plan.Actions, qaActions(issue, ref.Repo, verification, false)...)
 		plan.Actions = append(plan.Actions, businessHandoffActions()...)
 	case "arch-approved":
 		plan.Actions = append(plan.Actions, Action{
@@ -211,8 +211,17 @@ func qaHandoffAction() Action {
 	}
 }
 
-func qaActions(issue ports.TeamIssue, repo string, verification []string) []Action {
+// qaActions builds the QA stage actions. rejected indicates QA has actually
+// rejected the implementation (state qa-failed): only then is a concrete bug
+// draft attached. For forward-looking states (ready-qa/in-dev/ready-dev) the
+// create-bug-issue action is a planned contingency with no draft, so its body
+// never falsely claims "QA rejected" before QA has run.
+func qaActions(issue ports.TeamIssue, repo string, verification []string, rejected bool) []Action {
 	bugLabels := []string{LabelBug, LabelQAFailed, LabelReadyDev, LabelCodexTeam}
+	var bug *BugSpec
+	if rejected {
+		bug = buildBugSpec(issue, repo, bugLabels, verification)
+	}
 	return []Action{
 		{
 			Kind:                 "run-role",
@@ -226,7 +235,7 @@ func qaActions(issue ports.TeamIssue, repo string, verification []string) []Acti
 			Role:        "QA",
 			Description: "QA rejection creates bug issue with synthetic or minimized evidence and a link back to the source issue.",
 			AddLabels:   bugLabels,
-			BugSpec:     buildBugSpec(issue, repo, bugLabels, verification),
+			BugSpec:     bug,
 		},
 	}
 }
@@ -235,15 +244,17 @@ func qaActions(issue ports.TeamIssue, repo string, verification []string) []Acti
 // with the BQA issue template (Context / Goal / Acceptance criteria / Manual
 // verification). It only produces a draft; nothing is opened on GitHub.
 func buildBugSpec(issue ports.TeamIssue, repo string, labels []string, verification []string) *BugSpec {
-	title := strings.TrimSpace(issue.Title)
+	// Both title and repo originate from untrusted issue JSON; collapse newlines
+	// so a crafted value can't inject extra Markdown sections or break the title.
+	title := sanitizeInline(issue.Title)
 	if title == "" {
 		title = "team pipeline issue"
 	}
 
 	source := "the source issue"
 	if issue.Number > 0 {
-		if repo = strings.TrimSpace(repo); repo != "" {
-			source = repo + "#" + strconv.Itoa(issue.Number)
+		if cleanRepo := sanitizeInline(repo); cleanRepo != "" {
+			source = cleanRepo + "#" + strconv.Itoa(issue.Number)
 		} else {
 			source = "#" + strconv.Itoa(issue.Number)
 		}
@@ -275,6 +286,13 @@ func buildBugSpec(issue ports.TeamIssue, repo string, labels []string, verificat
 		Labels: labels,
 		Body:   b.String(),
 	}
+}
+
+// sanitizeInline trims a value and collapses any newlines/tabs to single spaces
+// so untrusted issue fields can't inject Markdown structure or break a title.
+func sanitizeInline(s string) string {
+	replaced := strings.NewReplacer("\r", " ", "\n", " ", "\t", " ").Replace(s)
+	return strings.TrimSpace(strings.Join(strings.Fields(replaced), " "))
 }
 
 func businessHandoffActions() []Action {

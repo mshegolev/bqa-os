@@ -49,7 +49,8 @@ func TestUseCaseRoutesReadyQAStateToQAVerification(t *testing.T) {
 }
 
 func TestUseCaseDraftsBugSpecOnQARejectionPath(t *testing.T) {
-	issue := teamIssueWithLabels(27, "Ready QA task", "bqa:arch-approved", "bqa:ready-qa", "bqa:codex-team")
+	// Only an actual QA rejection (qa-failed) should carry a concrete bug draft.
+	issue := teamIssueWithLabels(27, "QA failed task", "bqa:ready-dev", "bqa:qa-failed", "bqa:codex-team")
 	uc := UseCase{IssueSource: fakeIssueSource{issue: issue}}
 
 	plan, err := uc.Run(context.Background(), ports.TeamIssueRef{Repo: "mshegolev/bqa-os", Number: 27}, Options{})
@@ -64,7 +65,7 @@ func TestUseCaseDraftsBugSpecOnQARejectionPath(t *testing.T) {
 	if action.BugSpec == nil {
 		t.Fatalf("expected QA rejection to draft a bug spec, got nil")
 	}
-	if action.BugSpec.Title != "Bug: Ready QA task" {
+	if action.BugSpec.Title != "Bug: QA failed task" {
 		t.Fatalf("unexpected bug title %q", action.BugSpec.Title)
 	}
 	if !contains(action.BugSpec.Labels, "bqa:bug") || !contains(action.BugSpec.Labels, "bqa:ready-dev") {
@@ -82,8 +83,28 @@ func TestUseCaseDraftsBugSpecOnQARejectionPath(t *testing.T) {
 			t.Fatalf("expected bug body to contain %q, got:\n%s", fragment, action.BugSpec.Body)
 		}
 	}
-	if strings.Contains(strings.ToLower(action.BugSpec.Body), "secret") == false {
-		t.Fatalf("expected bug body to warn against secrets, got:\n%s", action.BugSpec.Body)
+	if !strings.Contains(action.BugSpec.Body, "do not attach private data, secrets, or real session logs") {
+		t.Fatalf("expected bug body to carry the privacy warning, got:\n%s", action.BugSpec.Body)
+	}
+}
+
+// TestUseCaseForwardStatesDoNotDraftBugSpec guards that states where QA has not
+// rejected anything (ready-qa here) carry no bug draft, so the dry-run output
+// never falsely claims "QA rejected" before QA has run.
+func TestUseCaseForwardStatesDoNotDraftBugSpec(t *testing.T) {
+	issue := teamIssueWithLabels(27, "Ready QA task", "bqa:arch-approved", "bqa:ready-qa", "bqa:codex-team")
+	uc := UseCase{IssueSource: fakeIssueSource{issue: issue}}
+
+	plan, err := uc.Run(context.Background(), ports.TeamIssueRef{Repo: "mshegolev/bqa-os", Number: 27}, Options{})
+	if err != nil {
+		t.Fatalf("Run returned error: %v", err)
+	}
+	action := findAction(plan, "create-bug-issue")
+	if action == nil {
+		t.Fatalf("expected create-bug-issue action, got %#v", plan.Actions)
+	}
+	if action.BugSpec != nil {
+		t.Fatalf("ready-qa is not a rejection; expected no bug draft, got %#v", action.BugSpec)
 	}
 }
 
