@@ -13,6 +13,8 @@ import (
 
 const masterContextPath = ".bqa/prompts/bqa-master-context.md"
 
+const projectLocalRuntimeName = "project-local command"
+
 // adapter describes a supported AI coding runtime.
 type adapter struct {
 	name    string
@@ -81,7 +83,7 @@ type RuntimeStatus struct {
 // InstallCommands writes the project-local BQA master context and the
 // /bqa-master command helpers for each supported runtime.
 func (u UseCase) InstallCommands(ctx context.Context) (InstallResult, error) {
-	if err := u.Writer.WriteRuntimeArtifact(ctx, masterContextPath, masterContext("project-local command")); err != nil {
+	if err := u.Writer.WriteRuntimeArtifact(ctx, masterContextPath, masterContext(projectLocalRuntimeName)); err != nil {
 		return InstallResult{}, err
 	}
 
