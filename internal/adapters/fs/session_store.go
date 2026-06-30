@@ -27,11 +27,14 @@ func (s *SessionStore) SaveRaw(ctx context.Context, session ports.RawSession) (s
 	if ext == "" {
 		ext = ".txt"
 	}
-	path := filepath.Join(s.base(), "raw", session.Ref.Source, fmt.Sprintf("%06d-%s%s", s.seq, session.SHA256[:12], ext))
+	relativePath := filepath.Join("raw", session.Ref.Source, fmt.Sprintf("%06d-%s%s", s.seq, session.SHA256[:12], ext))
+	path := filepath.Join(s.base(), relativePath)
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 		return "", err
 	}
-	return path, os.WriteFile(path, session.Bytes, 0o600)
+	// Return a workspace-relative path (symmetric with SaveNormalized) so
+	// index.json's raw_path is portable across machines.
+	return relativePath, os.WriteFile(path, session.Bytes, 0o600)
 }
 
 func (s *SessionStore) SaveNormalized(ctx context.Context, session ports.NormalizedSession) (string, error) {
