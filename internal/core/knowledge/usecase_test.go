@@ -69,6 +69,111 @@ func TestUseCaseBuildsKnowledgeArtifacts(t *testing.T) {
 	}
 }
 
+func TestSuccessfulPromptCapturesReusableCandidate(t *testing.T) {
+	strong := "Task: implement a REST API endpoint that validates ETL reconciliation row counts. " +
+		"Acceptance criteria: the endpoint should return 200 with a JSON summary and the tests pass " +
+		"against the staging pipeline schema."
+	reader := fakeReader{
+		index: ports.SessionIndex{Entries: []ports.SessionIndexEntry{
+			{OriginalPath: "/tmp/strong.md", NormalizedPath: "strong.md"},
+		}},
+		files: map[string]string{"strong.md": strong},
+	}
+	writer := fakeWriter{files: map[string]string{}}
+	uc := UseCase{Reader: reader, Writer: writer, OutputDir: ".bqa/knowledge"}
+
+	if _, err := uc.Run(context.Background()); err != nil {
+		t.Fatalf("Run returned error: %v", err)
+	}
+
+	out := writer.files["successful_prompts.yaml"]
+	if !strings.Contains(out, "successful_prompt_candidate") {
+		t.Fatalf("expected strong prompt to be captured, got %s", out)
+	}
+	if !strings.Contains(out, "Acceptance criteria") {
+		t.Fatalf("expected captured prompt to retain reusable acceptance text, got %s", out)
+	}
+	if !strings.Contains(out, "evidence:") || !strings.Contains(out, "source:") {
+		t.Fatalf("expected record to include evidence and source, got %s", out)
+	}
+}
+
+func TestSuccessfulPromptRejectsGenericPoliteText(t *testing.T) {
+	reader := fakeReader{
+		index: ports.SessionIndex{Entries: []ports.SessionIndexEntry{
+			{OriginalPath: "/tmp/polite.md", NormalizedPath: "polite.md"},
+		}},
+		files: map[string]string{
+			"polite.md": "Hi there, please could you help me out? Thanks so much, I really appreciate it!",
+		},
+	}
+	writer := fakeWriter{files: map[string]string{}}
+	uc := UseCase{Reader: reader, Writer: writer, OutputDir: ".bqa/knowledge"}
+
+	if _, err := uc.Run(context.Background()); err != nil {
+		t.Fatalf("Run returned error: %v", err)
+	}
+
+	out := writer.files["successful_prompts.yaml"]
+	if strings.Contains(out, "successful_prompt_candidate") {
+		t.Fatalf("generic polite text must not be captured as a prompt, got %s", out)
+	}
+	if !strings.Contains(out, "[]") {
+		t.Fatalf("expected empty successful_prompts list, got %s", out)
+	}
+}
+
+func TestReusablePromptHeuristics(t *testing.T) {
+	cases := []struct {
+		name string
+		text string
+		want bool
+	}{
+		{
+			name: "task with domain and acceptance",
+			text: "Task: refactor the auth module so that all existing tests pass and coverage is preserved.",
+			want: true,
+		},
+		{
+			name: "imperative with domain and output cue",
+			text: "Implement a GraphQL resolver for the orders schema; the result should return paginated edges.",
+			want: true,
+		},
+		{
+			name: "only pleasantries",
+			text: "please could you help, thanks a lot, really appreciate it",
+			want: false,
+		},
+		{
+			name: "too short",
+			text: "fix it please",
+			want: false,
+		},
+		{
+			name: "task intent but no domain or acceptance",
+			text: "Task: write something nice for me whenever you have a free moment today, thank you kindly.",
+			want: false,
+		},
+		{
+			name: "raw transcript without task structure is bounded",
+			text: "user opened the chat and the assistant replied with a long greeting and some unrelated chatter " +
+				strings.Repeat("blah ", 200),
+			want: false,
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			prompt, ok := reusablePrompt(cleanEvidenceText(tc.text))
+			if ok != tc.want {
+				t.Fatalf("reusablePrompt(%q) ok = %v, want %v (prompt=%q)", tc.text, ok, tc.want, prompt)
+			}
+			if ok && len(prompt) > promptMaxLen {
+				t.Fatalf("captured prompt exceeds max length: %d", len(prompt))
+			}
+		})
+	}
+}
+
 func TestUseCaseReturnsErrorWhenIndexedSessionCannotBeRead(t *testing.T) {
 	reader := failingReader{
 		index: ports.SessionIndex{Entries: []ports.SessionIndexEntry{
