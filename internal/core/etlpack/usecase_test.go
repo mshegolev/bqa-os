@@ -95,7 +95,7 @@ func TestUseCaseGeneratesSyntheticPackWhenInputsAreMissing(t *testing.T) {
 	if strings.Contains(spec, "synthetic query placeholder") {
 		t.Fatalf("spec template must no longer contain the synthetic query placeholder")
 	}
-	for _, marker := range []string{"COUNT(*)", ":date_start", ":date_end", "demo_src.source_table", "demo_dw.target_table", "natural_key"} {
+	for _, marker := range []string{"COUNT(*)", ":date_start", ":date_end", "demo_src.source_table", "demo_dw.target_table", "natural_key", "required_field IS NULL"} {
 		if !strings.Contains(spec, marker) {
 			t.Fatalf("spec template should contain real SQL marker %q", marker)
 		}
