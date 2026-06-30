@@ -20,15 +20,45 @@ const PHASES = [
 /* Human faction — each maps to an SDLC role. job: which resource node
    they harvest (or 'defend'/'build'/'release'). */
 const UNIT_TYPES = {
-  builder:             { label: "Builder Agent",       sdlc: "Setup / CI/CD / architecture",     color: "#b9a37a", glyph: "⌂", job: "build",  strong: "Repairs & raises the citadel", weak: "Cannot attack" },
-  feature_worker:      { label: "Feature Worker",      sdlc: "Feature delivery",                 color: "#f2c14e", glyph: "★", job: "gold",   strong: "Fast value (gold) delivery", weak: "Fragile in melee" },
-  prompt_smith:        { label: "Prompt Smith",        sdlc: "Prompt engineering / guardrails",  color: "#8e6fc4", glyph: "✦", job: "wood",   strong: "Hardens prompts vs drift", weak: "Low HP up close" },
-  hardening_engineer:  { label: "Hardening Engineer",  sdlc: "Security hardening / validation",  color: "#6fb3e0", glyph: "⛨", job: "stone",  strong: "Resists CVEs & incidents", weak: "Slow to redeploy" },
-  context_logger:      { label: "Context Logger",      sdlc: "Logs / telemetry / observability", color: "#7bc45a", glyph: "≋", job: "mana",   strong: "Feeds signal / spots threats", weak: "Weak attacker" },
-  incident_defender:   { label: "Incident Defender",   sdlc: "Triage / mitigation / response",   color: "#e0883a", glyph: "⚔", job: "defend", strong: "Front-line vs bugs & ogres", weak: "Costly to field" },
-  release_captain:     { label: "Release Captain",     sdlc: "Release readiness / launch",       color: "#f4eddc", glyph: "✚", job: "release",strong: "Rallies the team to ship", weak: "Best only late-game" },
-  sentinel_archer:     { label: "Sentinel Archer",     sdlc: "Static analysis / scanning (ranged)", color: "#9ed36a", glyph: "➹", job: "defend", ranged: true, range: 150, dmg: 24, strong: "Ranged — hits before contact", weak: "Squishy if swarmed" },
+  builder:             { label: "Builder Agent",       sdlc: "Setup / CI/CD / architecture",     color: "#b9a37a", glyph: "⌂", job: "build",  strong: "Repairs & raises the citadel", weak: "Cannot attack", skills: ["scaffold", "ci-cd", "raise-walls"], mcp: ["gitlab-ci"] },
+  feature_worker:      { label: "Feature Worker",      sdlc: "Feature delivery",                 color: "#f2c14e", glyph: "★", job: "gold",   strong: "Fast value (gold) delivery", weak: "Fragile in melee", skills: ["feature-delivery", "gather-gold"], mcp: ["jira-confluence"] },
+  prompt_smith:        { label: "Prompt Smith",        sdlc: "Prompt engineering / guardrails",  color: "#8e6fc4", glyph: "✦", job: "wood",   strong: "Hardens prompts vs drift", weak: "Low HP up close", skills: ["prompt-hardening", "guardrails"], mcp: ["context7"] },
+  hardening_engineer:  { label: "Hardening Engineer",  sdlc: "Security hardening / validation",  color: "#6fb3e0", glyph: "⛨", job: "stone",  strong: "Resists CVEs & incidents", weak: "Slow to redeploy", skills: ["sast-scan", "validation"], mcp: ["sonarqube", "serena"] },
+  context_logger:      { label: "Context Logger",      sdlc: "Logs / telemetry / observability", color: "#7bc45a", glyph: "≋", job: "mana",   strong: "Feeds signal / spots threats", weak: "Weak attacker", skills: ["log-investigation", "telemetry"], mcp: ["elasticsearch", "kibana"] },
+  incident_defender:   { label: "Incident Defender",   sdlc: "Triage / mitigation / response",   color: "#e0883a", glyph: "⚔", job: "defend", strong: "Front-line vs bugs & ogres", weak: "Costly to field", skills: ["triage", "mitigation"], mcp: ["prometheus"] },
+  release_captain:     { label: "Release Captain",     sdlc: "Release readiness / launch",       color: "#f4eddc", glyph: "✚", job: "release",strong: "Rallies the team to ship", weak: "Best only late-game", skills: ["release-readiness", "launch"], mcp: ["jenkins"] },
+  sentinel_archer:     { label: "Sentinel Archer",     sdlc: "Static analysis / scanning (ranged)", color: "#9ed36a", glyph: "➹", job: "defend", ranged: true, range: 150, dmg: 24, strong: "Ranged — hits before contact", weak: "Squishy if swarmed", skills: ["static-analysis", "ranged-scan"], mcp: ["semgrep"] },
 };
+
+/* Orc threat type -> human-readable category, shown when you click an orc. */
+const THREAT_CAT = {
+  bug_grunt: "Bug", regression_raider: "Regression", spear_hurler: "Bug (ranged)",
+  cve_shaman: "CVE / vulnerability", incident_ogre: "Incident", tech_debt_troll: "Tech debt",
+  deadline_warlord: "Deadline (boss)",
+};
+
+/* Procedural styling pools for user-uploaded agents (random-but-stable per agent). */
+const PROC_COLORS = ["#f2c14e", "#8e6fc4", "#6fb3e0", "#7bc45a", "#e0883a", "#d96fa0", "#5ad6c4", "#c9a23a", "#e06f6f", "#9ed36a"];
+const PROC_GLYPHS = ["★", "✦", "⛨", "≋", "⚔", "✚", "➹", "❖", "✷", "⚒", "☗", "✜", "♛", "⚿"];
+const PROC_SKILLS = ["test-gen", "log-investigation", "reconciliation", "data-quality", "contract-test", "api-test", "e2e", "schema-check", "perf-probe", "fuzzing", "regression-guard", "trace-review"];
+const PROC_MCP = ["jira-confluence", "serena", "sonarqube", "prometheus", "kibana", "elasticsearch", "context7", "gitlab-ci", "playwright", "semgrep"];
+const PROC_NAMES = ["Aldric", "Brina", "Caelum", "Dunmar", "Eira", "Fenwick", "Gwyn", "Hale", "Isolde", "Joren", "Kestrel", "Lyra", "Maelis", "Nyx", "Orin", "Perrin", "Quill", "Rowan", "Sable", "Tarin", "Vesper", "Wren"];
+const PROC_EPITHETS = ["the Swift", "the Bold", "the Keen", "the Steady", "the Sharp", "the Wary", "the Tireless", "the Exacting"];
+
+/* Deterministic style from a seed string so the same agent always looks the same. */
+function procStyle(seed) {
+  let h = 0; const s = String(seed);
+  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0;
+  const pick = (arr, off) => arr[(h + off) % arr.length];
+  const pickN = (arr, n, off) => { const out = new Set(); for (let i = 0; i < n; i++) out.add(arr[(h + off + i * 7) % arr.length]); return [...out]; };
+  return {
+    name: pick(PROC_NAMES, 0) + " " + pick(PROC_EPITHETS, 3),
+    color: pick(PROC_COLORS, 1),
+    glyph: pick(PROC_GLYPHS, 2),
+    skills: pickN(PROC_SKILLS, 3, 5),
+    mcp: pickN(PROC_MCP, 2, 11),
+  };
+}
 
 /* Orc faction — threats. size scales the sprite; boss flags the Warlord. */
 const ENEMY_TYPES = {

@@ -13,6 +13,10 @@
 /* ---- isometric grid -------------------------------------- */
 const GW = 12, GH = 12, TW = 56, TH = 28, TZ = 12;
 let ORIGIN_X = 0, ORIGIN_Y = 60;
+// Fixed design-space size of the isometric field; the canvas scales/centres
+// this to fit any viewport (incl. fullscreen) via a render transform.
+const DESIGN_W = 720, DESIGN_H = 440;
+let VIEW_SCALE = 1, VIEW_OX = 0, VIEW_OY = 0;
 
 const PAL = {
   grassTop: "#4a7a3a", grassL: "#3c6630", grassR: "#2f5226",
@@ -43,7 +47,6 @@ const G = {
   clock: 0, demoIdx: 0, done: false, grace: 9,
   warlordSeen: false, warlordDead: false,
   mode: "demo",            // demo | survival
-  demoRecruitUnlocks: null,
   wave: 0, waveGap: 0, wavesSurvived: 0, recorded: false,
   dt: 0, last: 0,
 };
@@ -155,7 +158,9 @@ function drawOrc(e) {
 }
 
 function render() {
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
   ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.setTransform(VIEW_SCALE, 0, 0, VIEW_SCALE, VIEW_OX, VIEW_OY);
   drawTerrain();
   const sp = [];
   sp.push({ d: G.castle.tx + G.castle.ty, f: drawCastle });
@@ -167,6 +172,7 @@ function render() {
   sp.sort((p, q) => (p.d - q.d) || ((p.y || 0) - (q.y || 0)));
   for (const s of sp) s.f();
   drawProjectiles();
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
   drawMinimap();
 }
 
@@ -178,11 +184,12 @@ function placeNodes() {
   ];
 }
 function nodeOf(kind) { return G.nodes.find((n) => n.kind === kind); }
-function spawnUnit(type) {
+function spawnUnit(type, opts) {
   const d = UNIT_TYPES[type]; if (!d) return;
   const tx = clamp(G.castle.tx + (G.units.length % 3) - 1, 1, GW - 2);
   const ty = clamp(G.castle.ty + 1 + (G.units.length % 2), 1, GH - 2);
   const u = { type, ...d, hp: 120, maxhp: 120, tx, ty, px: isoX(tx, ty), py: isoY(tx, ty), target: null };
+  if (opts) Object.assign(u, opts);
   G.units.push(u);
   return u;
 }
@@ -205,8 +212,6 @@ function applyLog(ev) {
   else if (spawn && spawn.startsWith("unit:")) spawnUnit(spawn.slice(5));
   else if (spawn && spawn.startsWith("enemy:")) spawnEnemy(spawn.slice(6));
   logMsg(ev.msg, ev.severity);
-  const unlocked = unlockDemoRecruitsForEvent(ev);
-  if (unlocked) logMsg("Unlocked recruit: " + UNIT_TYPES[unlocked].label + ".");
 }
 
 /* ---- simulation ------------------------------------------ */
@@ -489,42 +494,6 @@ const COMMANDS = [
   { id: "gather", label: "+Gather", glyph: "⛏", kind: "skill" },
   { id: "clear_context", label: "Clear Context", glyph: "✺", kind: "spell" },
 ];
-const DEMO_RECRUIT_UNLOCK_ORDER = ["feature_worker", "prompt_smith", "hardening_engineer", "incident_defender", "sentinel_archer"];
-const DEMO_RECRUIT_UNLOCK_BY_EVENT = {
-  feature_detected: "prompt_smith",
-  prompt_loaded: "hardening_engineer",
-  hardening_rule_added: "incident_defender",
-  incident_started: "sentinel_archer",
-};
-const DEMO_RECRUIT_UNLOCK_HINTS = {
-  prompt_smith: "After first feature",
-  hardening_engineer: "After prompt smithing",
-  incident_defender: "After hardening",
-  sentinel_archer: "When incidents start",
-};
-function isDemoRecruit(id) { return DEMO_RECRUIT_UNLOCK_ORDER.includes(id); }
-function resetDemoRecruitUnlocks() { G.demoRecruitUnlocks = new Set([DEMO_RECRUIT_UNLOCK_ORDER[0]]); }
-function unlockDemoRecruit(id) {
-  const idx = DEMO_RECRUIT_UNLOCK_ORDER.indexOf(id);
-  if (idx < 0) return null;
-  if (!G.demoRecruitUnlocks) resetDemoRecruitUnlocks();
-  const already = G.demoRecruitUnlocks.has(id);
-  for (let i = 0; i <= idx; i++) G.demoRecruitUnlocks.add(DEMO_RECRUIT_UNLOCK_ORDER[i]);
-  return already ? null : id;
-}
-function unlockDemoRecruitsForEvent(ev) {
-  if (G.mode !== "demo" || !ev) return null;
-  return unlockDemoRecruit(DEMO_RECRUIT_UNLOCK_BY_EVENT[ev.type]);
-}
-function isDemoRecruitLocked(id) {
-  return G.mode === "demo" && isDemoRecruit(id) && !!G.demoRecruitUnlocks && !G.demoRecruitUnlocks.has(id);
-}
-function demoRecruitState(id) {
-  return { id, locked: isDemoRecruitLocked(id), hint: DEMO_RECRUIT_UNLOCK_HINTS[id] || "" };
-}
-function demoRecruitSnapshot() { return DEMO_RECRUIT_UNLOCK_ORDER.map((id) => demoRecruitState(id)); }
-function isCommandLocked(c) { return c.kind === "recruit" && isDemoRecruitLocked(c.id); }
-function commandLockHint(c) { return isCommandLocked(c) ? (DEMO_RECRUIT_UNLOCK_HINTS[c.id] || "Unlocks later") : ""; }
 // Costs rise the more you already have, so growth is steady, never trivial,
 // and the challenge scales proportionally with your army.
 function costFor(c) {
@@ -575,13 +544,8 @@ function updateCommands() {
   for (const c of COMMANDS) {
     const b = box.querySelector('[data-id="' + c.id + '"]'); if (!b) continue;
     const cost = costFor(c);
-    const locked = isCommandLocked(c);
-    b.disabled = G.state !== "playing" || locked || !canAfford(cost);
-    b.classList.toggle("locked", locked);
-    b.title = locked ? commandLockHint(c) : "";
-    const glyph = b.querySelector(".cmd-g"); if (glyph) glyph.textContent = locked ? "🔒" : c.glyph;
+    b.disabled = G.state !== "playing" || !canAfford(cost);
     const cs = b.querySelector(".cmd-cost"); if (cs) cs.textContent = costStr(cost);
-    if (cs && locked) cs.textContent = "🔒 " + commandLockHint(c);
   }
 }
 function drawMCP(m) {
@@ -672,22 +636,59 @@ function showModal() {
 }
 
 /* ---- input ----------------------------------------------- */
+// In-browser, key-less lore generation (Transformers.js, lazy-loaded on click).
+function addLoreButton(ins, hero) {
+  const btn = el("button", "btn secondary", "✨ Generate lore"); btn.style.marginTop = "6px"; btn.style.fontSize = "13px";
+  const out = el("p", "hint", ""); out.style.whiteSpace = "pre-wrap";
+  btn.addEventListener("click", async () => {
+    btn.disabled = true; out.textContent = "Forging lore — first run downloads a small model in your browser (no key, no server)…";
+    try {
+      const mod = await import(new URL("assets/lore.js", document.baseURI).href);
+      const text = await mod.generateLore(hero, (info) => {
+        if (info && info.status === "progress" && info.file) out.textContent = "Downloading model… " + (info.progress ? info.progress.toFixed(0) : 0) + "% — " + info.file;
+      });
+      out.textContent = text || "(the bard fell silent)";
+    } catch (_) {
+      out.textContent = "Lore unavailable here — needs WebGPU/WASM + the model CDN (a corporate network may block it).";
+    } finally { btn.disabled = false; }
+  });
+  ins.appendChild(btn); ins.appendChild(out);
+}
+
 function onClick(e) {
   const rect = canvas.getBoundingClientRect();
-  const sx = (e.clientX - rect.left) / rect.width * canvas.width, sy = (e.clientY - rect.top) / rect.height * canvas.height;
-  let hit = null, hd = 18;
-  for (const a of G.units) { const d = Math.hypot(a.px - sx, a.py - sy); if (d < hd) { hd = d; hit = a; } }
+  const cx = (e.clientX - rect.left) / rect.width * canvas.width, cy = (e.clientY - rect.top) / rect.height * canvas.height;
+  const sx = (cx - VIEW_OX) / VIEW_SCALE, sy = (cy - VIEW_OY) / VIEW_SCALE;
+  let hit = null, hd = 18, kind = null;
+  for (const a of G.units) { const d = Math.hypot(a.px - sx, a.py - sy); if (d < hd) { hd = d; hit = a; kind = "unit"; } }
+  for (const en of G.enemies) { const d = Math.hypot(en.px - sx, en.py - sy); if (d < hd) { hd = d; hit = en; kind = "enemy"; } }
   G.selected = hit;
   if (hit) sfx("select:" + hit.type);
   const ins = $("#inspect"); ins.replaceChildren(el("div", "panel-title", "⚑ Inspect"));
-  if (hit) {
-    const b = el("p"); const n = el("b", null, hit.label); n.style.color = hit.color; b.appendChild(n); ins.appendChild(b);
+  if (!hit) { ins.appendChild(el("p", "muted", "Click an agent or an orc to inspect.")); return; }
+
+  const titleP = el("p"); const n = el("b", null, hit.label); n.style.color = hit.color; titleP.appendChild(n); ins.appendChild(titleP);
+  const labeled = (cls, lbl, val) => { const p = el("p", cls || null); p.appendChild(el("b", null, lbl)); p.appendChild(document.createTextNode(val)); ins.appendChild(p); };
+
+  if (kind === "unit") {
     ins.appendChild(el("p", "muted", "SDLC role")); ins.appendChild(el("p", null, hit.sdlc));
-    if (hit.strong) { const s = el("p", "str"); s.appendChild(el("b", null, "▲ Strength: ")); s.appendChild(document.createTextNode(hit.strong)); ins.appendChild(s); }
-    if (hit.weak) { const w = el("p", "wk"); w.appendChild(el("b", null, "▼ Weakness: ")); w.appendChild(document.createTextNode(hit.weak)); ins.appendChild(w); }
+    if (hit.skills && hit.skills.length) labeled("str", "✦ Skills: ", hit.skills.join(", "));
+    if (hit.mcp && hit.mcp.length) labeled(null, "⛁ MCP: ", hit.mcp.join(", "));
+    if (hit.strong) labeled("str", "▲ Strength: ", hit.strong);
+    if (hit.weak) labeled("wk", "▼ Weakness: ", hit.weak);
     if (hit.drift > 0) ins.appendChild(el("p", "wk", "≈ Model Drift active — missing! Cast Clear Context."));
     ins.appendChild(el("p", "hint", "Job: " + hit.job + (NODE_RES[hit.job] ? " → " + NODE_RES[hit.job] : "")));
-  } else ins.appendChild(el("p", "muted", "Click an agent to inspect."));
+    if (hit.procedural) ins.appendChild(el("p", "hint", "⚙ Procedurally forged from your uploaded agent."));
+    addLoreButton(ins, hit);
+  } else {
+    ins.appendChild(el("p", "muted", "Orc threat")); ins.appendChild(el("p", null, THREAT_CAT[hit.type] || "Threat"));
+    labeled("wk", "⚔ Damage: ", String(hit.dmg));
+    labeled(null, "❤ HP: ", Math.max(0, Math.round(hit.hp)) + " / " + hit.maxhp);
+    labeled("wk", "🛡 Trust hit: ", "-" + hit.trust);
+    labeled(null, "» Speed: ", String(hit.speed));
+    const tags = []; if (hit.ranged) tags.push("ranged"); if (hit.cve) tags.push("CVE"); if (hit.boss) tags.push("BOSS");
+    if (tags.length) ins.appendChild(el("p", "hint", tags.join(" · ")));
+  }
 }
 
 /* ---- meta-progression: points + persistent upgrades ------ */
@@ -738,16 +739,51 @@ function renderArmory(box) {
 }
 
 /* ---- boot ------------------------------------------------ */
-function resize() { const w = canvas.clientWidth; canvas.width = w; canvas.height = Math.round(w * 0.6); ORIGIN_X = canvas.width / 2; ORIGIN_Y = 56; }
+function resize() {
+  const w = canvas.clientWidth || 720;
+  const h = canvas.clientHeight || Math.round(w * 0.6);
+  canvas.width = w; canvas.height = h;
+  ORIGIN_X = DESIGN_W / 2; ORIGIN_Y = 56;
+  VIEW_SCALE = Math.min(w / DESIGN_W, h / DESIGN_H);
+  VIEW_OX = (w - DESIGN_W * VIEW_SCALE) / 2;
+  VIEW_OY = (h - DESIGN_H * VIEW_SCALE) / 2;
+}
+const WARBAND_MAP = { etl: "feature_worker", api: "hardening_engineer", graphql: "prompt_smith", data_quality: "hardening_engineer", bugs: "incident_defender", prompts: "prompt_smith" };
+// Compute the procedurally-styled heroes an uploaded archive will field.
+// Pure (no side effects) so the start-screen preview matches the real muster.
+function computeWarband(archive) {
+  const out = [];
+  if (!(archive && Array.isArray(archive.sessions) && archive.sessions.length)) return out;
+  let i = 0;
+  for (const s of archive.sessions) {
+    if (i >= 6) break; // cap the uploaded warband
+    const baseType = WARBAND_MAP[String(s.domain || "").toLowerCase()] || "feature_worker";
+    const st = procStyle((s.name || s.id || s.domain || "agent") + ":" + i);
+    out.push({ type: baseType, label: s.name || st.name, color: st.color, glyph: st.glyph, skills: st.skills, mcp: st.mcp });
+    i++;
+  }
+  return out;
+}
 function seedAgents(seedArchive) {
   spawnUnit("builder");
-  G.broughtArchive = false;
-  if (seedArchive && Array.isArray(seedArchive.sessions) && seedArchive.sessions.length) {
-    G.broughtArchive = true;
-    const map = { etl: "feature_worker", api: "hardening_engineer", graphql: "prompt_smith", data_quality: "hardening_engineer", bugs: "incident_defender", prompts: "prompt_smith" };
-    const seen = new Set();
-    for (const s of seedArchive.sessions) { const u = map[String(s.domain || "").toLowerCase()]; if (u && !seen.has(u)) { seen.add(u); spawnUnit(u); } }
-    logMsg("Your uploaded agents answer the call (+25% points).");
+  const band = computeWarband(seedArchive);
+  G.broughtArchive = band.length > 0;
+  for (const h of band) spawnUnit(h.type, { procedural: true, label: h.label, color: h.color, glyph: h.glyph, skills: h.skills, mcp: h.mcp });
+  if (band.length) logMsg("Your uploaded agents answer the call (+25% points) — " + band.length + " procedurally-forged heroes.");
+}
+// Start-screen preview of the warband (step ②).
+function renderWarband(elId, archive) {
+  const box = document.getElementById(elId); if (!box) return;
+  box.replaceChildren();
+  const band = computeWarband(archive);
+  if (!band.length) { box.appendChild(el("p", "hint", "No uploaded agents yet — you'll fight with the default garrison. Upload above to forge your own warband.")); return; }
+  box.appendChild(el("p", "str", "✓ " + band.length + " heroes mustered (+25% points):"));
+  for (const h of band) {
+    const row = el("div", "mini");
+    const sw = el("span", "sw", h.glyph); sw.style.background = h.color; sw.style.color = "#14110d";
+    row.appendChild(sw);
+    row.appendChild(el("small", null, h.label + " — skills: " + h.skills.join(", ") + " · MCP: " + h.mcp.join(", ")));
+    box.appendChild(row);
   }
 }
 function begin() {
@@ -758,12 +794,12 @@ function begin() {
   syncPanels(); requestAnimationFrame(loop);
 }
 function startDemo(seedArchive) {
-  G.mode = "demo"; resetDemoRecruitUnlocks(); placeNodes(); seedAgents(seedArchive);
+  G.mode = "demo"; placeNodes(); seedAgents(seedArchive);
   logMsg("Builder Agent raised the first wall of architecture.");
   begin();
 }
 function startSurvival(seedArchive) {
-  G.mode = "survival"; G.demoRecruitUnlocks = null; placeNodes();
+  G.mode = "survival"; placeNodes();
   seedAgents(seedArchive);
   spawnUnit("incident_defender"); spawnUnit("incident_defender");
   G.wave = 0; G.waveGap = 1.5; G.wavesSurvived = 0; G.recorded = false;
@@ -774,10 +810,11 @@ function startSurvival(seedArchive) {
 document.addEventListener("DOMContentLoaded", () => {
   canvas = $("#field"); ctx = canvas.getContext("2d"); ctx.imageSmoothingEnabled = false;
   resize(); window.addEventListener("resize", () => { resize(); if (G.state !== "playing") render(); });
+  // Keep the canvas bitmap in sync with its displayed box (fixes squash on layout settle / fullscreen).
+  if (window.ResizeObserver) { new ResizeObserver(() => { resize(); if (G.state !== "playing") render(); }).observe(canvas); }
   canvas.addEventListener("click", onClick);
   placeNodes(); render(); syncPanels();
   let archive = null; try { const s = sessionStorage.getItem("bqa-archive"); if (s) archive = JSON.parse(s); } catch (_) {}
-  $("#start-demo").addEventListener("click", () => startDemo(archive));
   const sv = document.getElementById("start-survival"); if (sv) sv.addEventListener("click", () => startSurvival(archive));
   const mute = document.getElementById("mute");
   if (mute) mute.addEventListener("click", () => { const on = window.AUDIO && window.AUDIO.toggle(); mute.textContent = on ? "🔊" : "🔇"; });
@@ -786,5 +823,6 @@ document.addEventListener("DOMContentLoaded", () => {
   buildCommands();
   renderArmory(document.getElementById("upgrades-start"));
   const fs = document.getElementById("fs"); if (fs) fs.addEventListener("click", toggleFullscreen);
-  if (archive) { const note = document.getElementById("archive-note"); if (note) note.style.display = ""; }
+  renderWarband("warband", archive);
+  if (archive) { const prep = document.getElementById("start-prep"); if (prep) prep.open = true; }
 });

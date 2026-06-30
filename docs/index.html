@@ -14,6 +14,11 @@
     .step3 b { font-family: var(--font-body); font-weight:700; text-transform:uppercase; font-size: 17px; color: var(--gold); display: block; margin-bottom: 6px; }
     .step3 small { font-size: 16px; color: var(--parchment-dim); }
 
+    .cmd-hero { border-color: var(--gold-deep); }
+    .cmd-row { display: flex; gap: 10px; align-items: stretch; flex-wrap: wrap; margin: 6px 0; }
+    .cmd-row pre { flex: 1 1 280px; min-width: 0; margin: 0; background: #14110d; color: var(--forest-bright); padding: 14px 16px; font-size: 15px; line-height: 1.4; overflow-x: auto; box-shadow: inset 2px 2px 0 var(--bevel-dark), 0 0 12px rgba(242,193,78,.22); border-left: var(--px) solid var(--gold); }
+    .cmd-row .btn { white-space: nowrap; align-self: stretch; }
+
     .dropzone { border: var(--px) dashed var(--stone-500); background: repeating-linear-gradient(45deg, rgba(0,0,0,.18) 0 6px, transparent 6px 12px);
       padding: 34px 18px; text-align: center; cursor: pointer; transition: background .08s steps(2); }
     .dropzone .big { font-family: var(--font-body); font-weight:700; letter-spacing:1px; font-size: 20px; color: var(--gold); margin-bottom: 10px; }
@@ -58,10 +63,20 @@
     <h1>Decode your agents, then fight</h1>
 
     <div class="steps3">
-      <div class="step3"><b>1 · Upload</b><small>Drop a <code>.zip</code> or <code>.json</code> archive of your QA sessions.</small></div>
-      <div class="step3"><b>2 · Get agents</b><small>It decodes locally into agents, skills &amp; workflows — download the result <code>.zip</code>.</small></div>
+      <div class="step3"><b>1 · Run</b><small>One command builds <code>archive.zip</code> from your local AI sessions.</small></div>
+      <div class="step3"><b>2 · Drop</b><small>Drop <code>archive.zip</code> below — decoded locally into agents.</small></div>
       <div class="step3"><b>3 · Battle</b><small>Send your agents into the war against the orc bugs &amp; CVEs.</small></div>
     </div>
+
+    <section class="panel cmd-hero" style="margin:0 0 16px">
+      <div class="panel-title">① Make your archive — one command</div>
+      <p class="legend">Paste this in your terminal. It finds your local AI-coding sessions (Claude&nbsp;Code / Codex / OpenCode), builds <code>archive.zip</code>, and stays entirely on your machine — nothing is uploaded:</p>
+      <div class="cmd-row">
+        <pre id="cmd">curl -fsSL http://m-v-shchegolev-agent-citadel-d3d663.pages.git.ringcentral.com/tools/make-archive.sh | bash</pre>
+        <button class="btn" id="copy-cmd" onclick="navigator.clipboard.writeText(document.getElementById('cmd').textContent.trim()).then(()=>{this.textContent='Copied ✓';setTimeout(()=>{this.textContent='⧉ Copy'},1500)})">⧉ Copy</button>
+      </div>
+      <p class="legend">→ produces <code>archive.zip</code> in the current folder. Then drop it below. Needs <code>python3</code> + <code>zip</code>. No local sessions? <a href="fixtures/demo-archive.json" download>grab a template</a> or hit “Load demo”. Sanitize before sharing publicly.</p>
+    </section>
 
     <div class="deck">
       <section class="panel">

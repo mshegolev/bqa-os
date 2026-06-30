@@ -4,18 +4,70 @@
 
 BQA-OS is designed to connect QA knowledge, agents, skills, workflows, guardrails, memory, and AI coding runtimes into one reusable system.
 
-## Live demo
+![Citadel: The Release War — gameplay preview](docs/assets/preview.gif)
 
-**BQA-OS Agent Citadel** is a GitHub Pages demo placeholder for the upcoming visual flow:
+## Build your own warband (one command)
+
+Turn your local AI-coding sessions into an uploadable archive, then drop it on the
+decoder page to forge your own agents:
+
+```bash
+curl -fsSL http://m-v-shchegolev-agent-citadel-d3d663.pages.git.ringcentral.com/tools/make-archive.sh | bash
+# → archive.zip  (built from ~/.claude, ~/.codex, ~/.opencode sessions; stays local)
+```
+
+Then open the [decoder page](http://m-v-shchegolev-agent-citadel-d3d663.pages.git.ringcentral.com/), drop `archive.zip`, and hit Battle. Sanitize before sharing publicly.
+
+## Use the decoded archive (e.g. in Codex)
+
+After decoding, **⬇ Download agents.zip** gives you `bqa-os-output.zip`:
+
+```text
+agents/agents.md          generated agents
+workflows/workflows.md    generated workflows
+knowledge/*.yaml          knowledge specs
+recommendations.md        next-step recommendations
+result.json               the full structured output
+```
+
+Wire it into an AI coding runtime:
+
+```bash
+# 1. unzip into your project's .bqa workspace
+unzip bqa-os-output.zip -d .bqa/
+
+# 2. generate the runtime context (Codex shown; also: bqa claude | bqa opencode)
+bqa codex            # writes .bqa/prompts/bqa-master-context.md
+
+# 3. start Codex with that context + your task
+codex exec "$(cat .bqa/prompts/bqa-master-context.md)
+
+Task: Test DATA-12345 using my decoded agents and workflows."
+```
+
+No `bqa` CLI installed? Reference the files straight in the prompt:
+
+```bash
+codex exec "Act as my QA agents.
+Agents: $(cat agents/agents.md)
+Workflows: $(cat workflows/workflows.md)
+Task: validate the ETL pipeline and write tests."
+```
+
+The same artifacts work in **Claude Code** (`bqa claude`) and **OpenCode** (`bqa opencode`).
+
+## Live demo (GitLab Pages)
+
+- Site: http://m-v-shchegolev-agent-citadel-d3d663.pages.git.ringcentral.com
+- 🎮 Game — **Citadel: The Release War**: http://m-v-shchegolev-agent-citadel-d3d663.pages.git.ringcentral.com/game.html
+
+Published from `docs/` by the `pages` job in `.gitlab-ci.yml` on every push to `main`.
+
+**Citadel: The Release War** dramatizes the QA/SDLC delivery flow as a retro
+RTS battle:
 
 ```text
 raw QA sessions → sanitized knowledge → skills → agents → workflows
-```
-
-Live URL, after GitHub Pages is enabled for `/docs` on the `main` branch:
-
-```text
-https://mshegolev.github.io/bqa-os/
 ```
 
 Local preview:
@@ -29,6 +81,60 @@ Then open:
 ```text
 http://localhost:8080
 ```
+
+## AI tooling
+
+This entry was built end to end with AI coding agents:
+
+- **Claude Code** (Anthropic Opus) acted as the orchestrator — planning, reviewing,
+  filing issues, fixing blockers, and importing/deploying the project to GitLab Pages.
+- A dedicated **`bqa-team`** project was created to make building projects like
+  this one possible — a reusable role-orchestrator pack (GitHub Issues + Codex CLI
+  + QA review + business acceptance) packaged as `scripts/bqa_team_orchestrator.py`
+  and the `.bqa-team/` roles/templates.
+- The **BQA Team autopilot** (that `scripts/bqa_team_orchestrator.py`) drove
+  the **Codex CLI** (`codex exec`) as the developer/QA roles: it turns GitHub issues
+  into branches, generates code, runs tests, and opens PRs automatically.
+- **NotebookLM** and **Perplexity** were used separately for research — exploring
+  ideas, references, and background before and during implementation.
+- **At runtime, an LLM is used for generation**: the game can run a small LLM
+  **in the browser** (Transformers.js — `onnx-community/gemma-3-270m-it-ONNX`,
+  WebGPU with WASM fallback) to **generate hero lore** on demand. It is
+  **key-less and backend-less** — weights load from the public Hugging Face CDN
+  and inference runs entirely on the player's machine (see `docs/assets/lore.js`).
+
+Used end to end for planning, research, code generation, testing, debugging, and
+iterative refinement. The game itself is a **static, synthetic** vanilla HTML/CSS/JS
+demo (no backend) deployed via GitLab Pages; the only runtime AI is the optional,
+key-less in-browser lore generator above.
+
+## Deliverables
+
+| Deliverable | Purpose |
+|-------------|---------|
+| [README.md](README.md) | This file — overview, AI tooling, deliverables, tasks, install/usage, live demo (game rules → SPEC.md, structure → ARCHITECTURE.md). |
+| [SPEC.md](SPEC.md) | Game rules, scope, functional requirements, acceptance criteria. |
+| [ARCHITECTURE.md](ARCHITECTURE.md) | Tech stack, architecture, design decisions, AI/agent workflow. |
+| [RETROSPECTIVE.md](RETROSPECTIVE.md) | AI tools, workflow, what worked / didn't, lessons learned. |
+
+## Tasks the project was built from
+
+The game was produced by the BQA Team autopilot from GitHub issues in
+[`mshegolev/bqa-os`](https://github.com/mshegolev/bqa-os/issues). These are the
+tasks (specs) that drove this project, with their current status:
+
+| # | Status | Task |
+|---|--------|------|
+| [#26](https://github.com/mshegolev/bqa-os/issues/26) | ✅ Closed | Agent Team Visualization / Warcraft-style Map MVP (foundation of the game) |
+| [#43](https://github.com/mshegolev/bqa-os/issues/43) | 🟢 Open | Pages demo: BQA-OS Agent Citadel RTS-style processing viewer |
+| [#44](https://github.com/mshegolev/bqa-os/issues/44) | 🟢 Open | Pages demo game: BQA-OS QA agent campaign scenarios |
+| [#94](https://github.com/mshegolev/bqa-os/issues/94) | 🟢 Open | Level-up unlocks deeper stage progression & scaled difficulty |
+| [#95](https://github.com/mshegolev/bqa-os/issues/95) | 🟢 Open | Fanfare + animated fly-to-#1 when taking the leading leaderboard row |
+| [#96](https://github.com/mshegolev/bqa-os/issues/96) | 🟢 Open | Tutorial/demo: unlock recruitable units progressively, not all at once |
+| [#99](https://github.com/mshegolev/bqa-os/issues/99) | 🟢 Open | UI bug: overlapping text (title over HUD, leaderboard over recruit bar) |
+
+Status as of import; `Open` items were in the autopilot queue (architect →
+Codex dev → PR → QA) at the time this repository was created.
 
 ## Vision
 
@@ -125,7 +231,6 @@ bqa discover
 bqa ingest
 bqa build
 bqa build --sales-package
-bqa etl-agent-pack
 bqa run "Test DATA-12345"
 bqa team pipeline --issue-json issue.json --issue-number 123
 bqa runtime detect
@@ -159,32 +264,6 @@ Use synthetic artifacts for public demos and sanitized artifacts only for pilot
 customers. Do not place private repo data, real session logs, customer records,
 or secrets in public artifacts.
 
-## ETL QA Agent Pack
-
-Generate a copy-paste-ready local ETL QA Agent Pack for Codex and Claude Code:
-
-```bash
-bqa etl-agent-pack
-```
-
-The command reads `.bqa/knowledge/` and `.bqa/input/sessions/` when available,
-uses only aggregate statistics from local inputs, and writes synthetic-safe pack
-files under:
-
-```text
-.bqa/output/etl-agent-pack/
-```
-
-Generated pack directories:
-
-- `statistics/`
-- `agents/`
-- `workflows/`
-- `specs/`
-- `prompts/`
-- `examples/`
-- `README_NEXT_STEPS.md`
-
 ## Current implementation status
 
 Implemented:
@@ -194,23 +273,20 @@ Implemented:
 - runtime detection for Codex, Claude Code, and OpenCode
 - BQA Master Agent context generation for runtime adapters
 - early one-line installer through `install.sh`
-- GitHub Pages placeholder for BQA-OS Agent Citadel
+- GitLab Pages deployment of the Citadel game and landing page from `docs/`
 - optional Monday sales package generation for internal pilot validation
-- local ETL QA Agent Pack generation for Codex and Claude Code
+- `bqa run` task planner (loads the `.bqa` workspace, lists selected agents/skills/workflows)
+- `bqa doctor` workspace-health checks (pass/fail per directory, non-zero exit on failure)
+- BQA Brain `connect` / `pull` / `status` / `sync`
+- `bqa sanitize` secret scan + redaction (dry-run, and `--write` to apply)
 
 Planned:
 
-- `bqa brain connect`
-- `bqa brain pull`
-- `bqa brain sync`
-- `bqa sanitize`
-- real session analyzer
-- agent generator
-- skill generator
-- workflow generator
+- real session analyzer (current decode is keyword-based, MVP-level)
+- agent / skill / workflow generators beyond the MVP set
 - project profile builder
-- GitHub Releases with prebuilt binaries
-- `bqa self-update`
+- GitHub Releases with prebuilt binaries and a working `bqa self-update`
+  (the command exists but reports "not available yet")
 
 ## Security posture
 
