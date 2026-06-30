@@ -5,13 +5,16 @@ on:
     tags:
       - "v*.*.*"
 
+# Least privilege: only the publish job needs write access.
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   build:
     name: Build binaries
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     strategy:
       matrix:
         include:
@@ -56,6 +59,8 @@ jobs:
     name: Publish GitHub Release
     needs: build
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - name: Download all build artifacts
         uses: actions/download-artifact@v4

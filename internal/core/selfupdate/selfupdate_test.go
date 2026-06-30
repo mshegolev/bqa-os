@@ -34,9 +34,11 @@ func TestIsNewer(t *testing.T) {
 		{"dev", "v1.0.0", true},
 		{"", "v1.0.0", true},
 		{"v1.0.0", "v1.0.0", false},
-		{"1.0.0", "v1.0.0", false}, // normalized equal
-		{"v1.0.0", "v1.2.3", true},
-		{"v1.2.3", "v1.0.0", true}, // differing tag => updatable
+		{"1.0.0", "v1.0.0", false},  // normalized equal
+		{"v1.0.0", "v1.2.3", true},  // release strictly newer
+		{"v1.2.3", "v1.0.0", false}, // release older => not an update (no downgrade)
+		{"v1.9.0", "v1.10.0", true}, // numeric field compare, not lexical
+		{"v1.10.0", "v1.9.0", false},
 	}
 	for _, c := range cases {
 		if got := IsNewer(c.current, c.tag); got != c.want {

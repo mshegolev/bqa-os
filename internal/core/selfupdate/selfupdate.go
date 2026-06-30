@@ -11,12 +11,18 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strconv"
 	"strings"
 	"time"
 )
 
 // DefaultBaseURL is the GitHub API endpoint used to resolve the latest release.
 const DefaultBaseURL = "https://api.github.com/repos/mshegolev/bqa-os"
+
+// maxAssetBytes caps the size of a downloaded release asset to avoid filling the
+// disk in the directory that holds the production binary if pointed at a wrong
+// or hostile URL. The bqa binary is a few MiB; 256 MiB is a generous ceiling.
+const maxAssetBytes = 256 << 20
 
 // Updater resolves and applies updates from GitHub Releases. The base URL and
 // HTTP client are injectable so tests can point at an httptest.Server.
@@ -148,19 +154,58 @@ func (u *Updater) LatestRelease() (*Release, error) {
 	return nil, fmt.Errorf("no asset %q in release %s for %s/%s", want, rel.TagName, u.goos(), u.goarch())
 }
 
-// IsNewer reports whether the release tag differs from the currently running
-// version. A "dev" build is always considered updatable. Comparison is a plain
-// string inequality on the normalized tag (releases are immutable per tag, so a
-// differing tag means a different build).
+// IsNewer reports whether the release tag is strictly newer than the currently
+// running version. A "dev" build (or empty version) is always considered
+// updatable. Versions are compared field-by-field as integers (so 1.10.0 > 1.9.0);
+// if a field is not numeric the comparison falls back to a lexical compare of the
+// normalized strings. A downgrade (current newer than the release) returns false.
 func IsNewer(currentVersion, tagName string) bool {
 	if currentVersion == "dev" || currentVersion == "" {
 		return true
 	}
-	return normalize(currentVersion) != normalize(tagName)
+	return compareVersions(normalize(tagName), normalize(currentVersion)) > 0
 }
 
 func normalize(v string) string {
 	return strings.TrimPrefix(strings.TrimSpace(v), "v")
+}
+
+// compareVersions returns 1 if a > b, -1 if a < b, 0 if equal. It compares the
+// dot-separated fields numerically when possible, otherwise lexically.
+func compareVersions(a, b string) int {
+	af := strings.Split(a, ".")
+	bf := strings.Split(b, ".")
+	n := len(af)
+	if len(bf) > n {
+		n = len(bf)
+	}
+	for i := 0; i < n; i++ {
+		var as, bs string
+		if i < len(af) {
+			as = af[i]
+		}
+		if i < len(bf) {
+			bs = bf[i]
+		}
+		an, aerr := strconv.Atoi(as)
+		bn, berr := strconv.Atoi(bs)
+		if aerr == nil && berr == nil {
+			if an != bn {
+				if an > bn {
+					return 1
+				}
+				return -1
+			}
+			continue
+		}
+		if as != bs {
+			if as > bs {
+				return 1
+			}
+			return -1
+		}
+	}
+	return 0
 }
 
 // Apply downloads the release asset and atomically replaces the running binary.
@@ -237,8 +282,15 @@ func (u *Updater) download(url string, dst io.Writer) error {
 	if resp.StatusCode != http.StatusOK {
 		return fmt.Errorf("download asset: unexpected status %s", resp.Status)
 	}
-	if _, err := io.Copy(dst, resp.Body); err != nil {
+	// Cap the download to guard against a misconfigured/hostile URL filling the
+	// disk in the directory that holds the production binary.
+	limited := io.LimitReader(resp.Body, maxAssetBytes+1)
+	n, err := io.Copy(dst, limited)
+	if err != nil {
 		return fmt.Errorf("write asset: %w", err)
+	}
+	if n > maxAssetBytes {
+		return fmt.Errorf("download asset: response exceeded %d bytes", maxAssetBytes)
 	}
 	return nil
 }
