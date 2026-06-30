@@ -1,0 +1,7 @@
+2026-06-30 09:00:01 INFO  [netsuite_extract] starting incremental load source=netsuite target=warehouse.fct_transactions
+2026-06-30 09:00:42 INFO  [netsuite_extract] fetched 12450 rows in 41s
+2026-06-30 09:01:03 WARN  [transform]        12 rows with null account_id dropped
+2026-06-30 09:01:55 ERROR [load]             duplicate key on (transaction_id, line_no) batch=7
+2026-06-30 09:02:10 INFO  [load]             retry batch=7 with dedup -> ok
+2026-06-30 09:02:30 INFO  [validate]         row_count source=12450 target=12438 diff=12 (matches dropped nulls)
+2026-06-30 09:02:31 INFO  [pipeline]         SUCCESS duration=150s

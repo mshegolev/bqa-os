@@ -62,6 +62,23 @@ func Path(root string, write bool) (Result, error) {
 	return result, err
 }
 
+// Text redacts known secret patterns (AWS keys, generic tokens, private keys,
+// emails) from an in-memory string. It returns the redacted text and the number
+// of redactions applied, leaving the input untouched. Use this when content is
+// already in memory and must not be written back to disk.
+func Text(content string) (redacted string, redactions int) {
+	redacted = content
+	for _, pattern := range patterns {
+		matches := pattern.Re.FindAllString(redacted, -1)
+		if len(matches) == 0 {
+			continue
+		}
+		redactions += len(matches)
+		redacted = pattern.Re.ReplaceAllString(redacted, fmt.Sprintf("[REDACTED_%s]", strings.ToUpper(pattern.Name)))
+	}
+	return redacted, redactions
+}
+
 func sanitizeFile(path string, write bool) (Result, error) {
 	var result Result
 	data, err := os.ReadFile(path)
@@ -73,16 +90,7 @@ func sanitizeFile(path string, write bool) (Result, error) {
 	}
 	result.FilesScanned = 1
 	original := string(data)
-	updated := original
-	redactions := 0
-	for _, pattern := range patterns {
-		matches := pattern.Re.FindAllString(updated, -1)
-		if len(matches) == 0 {
-			continue
-		}
-		redactions += len(matches)
-		updated = pattern.Re.ReplaceAllString(updated, fmt.Sprintf("[REDACTED_%s]", strings.ToUpper(pattern.Name)))
-	}
+	updated, redactions := Text(original)
 	if updated != original {
 		result.FilesChanged = 1
 		result.Redactions = redactions
