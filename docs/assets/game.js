@@ -904,7 +904,7 @@ function renderWarband(elId, archive) {
 function begin() {
   applyUpgrades();
   if (G.mode === "survival") applySurvivalStartStage();
-  G.state = "playing"; G.clock = 0; G.demoIdx = 0; G.last = 0; G.awarded = false;
+  G.state = "playing"; G.clock = 0; G.demoIdx = 0; G.last = 0; G.awarded = false; G.lastRecord = null;
   $("#start").style.display = "none";
   try { if (window.AUDIO) window.AUDIO.music(true); } catch (_) {}
   syncPanels(); requestAnimationFrame(loop);
