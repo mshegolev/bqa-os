@@ -1,0 +1,38 @@
+# Expected `bqa build` output for this demo pack (illustrative).
+#
+# This file shows the SHAPE of `.bqa/knowledge/graphql_patterns.yaml` that
+# `bqa build` emits after the synthetic notes under ../notes/ are discovered and
+# ingested. The exact `evidence` window (a bounded snippet around the first
+# matched GraphQL needle) and `source` paths depend on your normalized-session
+# layout, so treat the evidence strings below as representative, not byte-exact.
+#
+# How each note maps to a finding:
+#   - Every note contains the literal "graphql" AND at least one trigger phrase
+#     ("graphql query" / "graphql mutation" / "graphql schema" / "graphql resolver"),
+#     so isGraphQLSignal() fires once per note.
+#   - Each fired signal produces ONE finding: name=graphql_functional_testing,
+#     domain=graphql, with evidence sliced around the first matching needle.
+#   - Findings are de-duplicated by (name, source) and sorted by source path.
+graphql_patterns:
+  - name: "graphql_functional_testing"
+    domain: "graphql"
+    evidence: "We tested the `orders` GraphQL query with variables to make sure paginated reads return a stable, typed shape. ... We exercised the `checkout` GraphQL mutation happy path against a synthetic cart. ... Re-sending the same idempotencyKey returns the same order (no double charge)."
+    source: ".bqa/input/sessions/normalized/<adapter>/gql_1_query_mutation.md"
+  - name: "graphql_functional_testing"
+    domain: "graphql"
+    evidence: "We sent a GraphQL mutation with an invalid input to confirm the schema rejects it before any resolver runs. ... errors[0].extensions.code = BAD_USER_INPUT ... We tested role-based access on a GraphQL query that requires the admin role ... viewer role gets data.adminReport = null with extensions.code = FORBIDDEN."
+    source: ".bqa/input/sessions/normalized/<adapter>/gql_2_validation_auth.md"
+  - name: "graphql_functional_testing"
+    domain: "graphql"
+    evidence: "We tested cursor pagination and filtering on the products GraphQL query. ... every node satisfies the filter, cursors are opaque and stable, no gaps or duplicates ... We forced a downstream dependency to time out and inspected the GraphQL error shape: partial data product.inStock=null, errors[0].path=[product,inStock], code=DOWNSTREAM_UNAVAILABLE ... breaking GraphQL schema change: Order.totalCents renamed, status String->OrderStatus enum."
+    source: ".bqa/input/sessions/normalized/<adapter>/gql_3_pagination_resolver_schema.md"
+
+# project_profile.yaml (emitted alongside) would increment signals.graphql by the
+# number of GraphQL notes ingested (3 from this pack), e.g.:
+#
+#   project_profile:
+#     sessions_analyzed: <N>
+#     signals:
+#       graphql: 3
+#       ...
+#     maturity: initial

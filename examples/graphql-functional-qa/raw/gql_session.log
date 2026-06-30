@@ -1,0 +1,18 @@
+2026-06-30 11:00:01 INFO  [gql-test] start commerce-gateway GraphQL functional suite (synthetic)
+2026-06-30 11:00:02 INFO  [gql-test] graphql query OrdersByCustomer variables={customerId:cust_synthetic_001,status:PAID,first:20}
+2026-06-30 11:00:02 INFO  [gql-test] -> 200 OK 20 nodes hasNextPage=true totalCents type=Int
+2026-06-30 11:00:05 INFO  [gql-test] graphql mutation Checkout cartId=cart_synthetic_77 idempotencyKey=idem-abc-123
+2026-06-30 11:00:06 INFO  [gql-test] -> 200 OK order.status=PAID userErrors=[] no top-level errors
+2026-06-30 11:00:07 INFO  [gql-test] graphql mutation Checkout retry same idempotencyKey -> same order.id (no double charge)
+2026-06-30 11:00:10 INFO  [gql-test] graphql query OrdersByCustomer first=0 (invalid)
+2026-06-30 11:00:10 WARN  [gql-test] -> errors[0].extensions.code=BAD_USER_INPUT argument=first data=null (resolver not invoked)
+2026-06-30 11:00:14 INFO  [gql-test] graphql query RevenueReport role=viewer
+2026-06-30 11:00:14 ERROR [gql-test] -> FAIL field-level auth bypass: viewer received grossRevenueCents (expected FORBIDDEN, data.adminReport=null)
+2026-06-30 11:00:15 INFO  [gql-test] graphql query RevenueReport role=admin -> 200 OK adminReport populated
+2026-06-30 11:00:20 INFO  [gql-test] graphql query Products first=2 filter={inStock:true,minPriceCents:1000} page=1
+2026-06-30 11:00:20 INFO  [gql-test] graphql query Products after=<endCursor> page=2 -> 4 distinct ids totalCount=4 no overlap
+2026-06-30 11:00:25 INFO  [gql-test] graphql resolver product.inStock inventory svc timeout (fault injected)
+2026-06-30 11:00:25 WARN  [gql-test] -> partial data product.inStock=null errors[0].path=[product,inStock] code=DOWNSTREAM_UNAVAILABLE
+2026-06-30 11:00:30 INFO  [gql-test] graphql schema introspection diff old vs new
+2026-06-30 11:00:30 ERROR [gql-test] -> breaking schema change: Order.totalCents renamed totalAmountCents, status String->OrderStatus enum, no @deprecated window
+2026-06-30 11:00:31 INFO  [gql-test] SUITE done pass=5 fail=2 (auth bypass + breaking schema change)
