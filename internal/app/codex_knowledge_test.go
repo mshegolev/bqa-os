@@ -77,11 +77,30 @@ func runCodexContext(t *testing.T) string {
 		t.Fatalf("Execute returned error: %v", err)
 	}
 
+	// Stdout contract: the codex path must still emit the generation line.
+	if !strings.Contains(buf.String(), "BQA context generated: .bqa/prompts/bqa-master-context.md") {
+		t.Fatalf("expected stdout to confirm context generation, got %q", buf.String())
+	}
+
 	data, err := os.ReadFile(filepath.Join(".bqa", "prompts", "bqa-master-context.md"))
 	if err != nil {
 		t.Fatalf("ReadFile master context returned error: %v", err)
 	}
 	return string(data)
+}
+
+// TestCodexContextIsIdempotent guards against double-appending the knowledge
+// section when `bqa codex` runs more than once.
+func TestCodexContextIsIdempotent(t *testing.T) {
+	chdirTemp(t)
+	seedKnowledge(t)
+
+	_ = runCodexContext(t)
+	content := runCodexContext(t)
+
+	if n := strings.Count(content, "## Project QA Knowledge"); n != 1 {
+		t.Fatalf("expected exactly one knowledge section after two runs, got %d", n)
+	}
 }
 
 func TestCodexContextIncludesKnowledge(t *testing.T) {

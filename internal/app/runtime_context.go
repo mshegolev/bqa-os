@@ -12,8 +12,6 @@ import (
 	"github.com/spf13/cobra"
 )
 
-const masterContextRelPath = ".bqa/prompts/bqa-master-context.md"
-
 func newRuntimeUseCase() coreruntime.UseCase {
 	return coreruntime.UseCase{
 		Writer:   fsadapter.RuntimeStore{TargetDir: "."},
@@ -62,8 +60,10 @@ func augmentCodexContext(ctx context.Context, contextPath string) error {
 	reader := fsadapter.KnowledgeStore{}
 	section, _ := codexKnowledgeSection(ctx, reader)
 
+	// Write back to the exact path we just read, so the read and write targets
+	// can never diverge.
 	writer := fsadapter.RuntimeStore{TargetDir: "."}
-	return writer.WriteRuntimeArtifact(ctx, masterContextRelPath, string(base)+section)
+	return writer.WriteRuntimeArtifact(ctx, contextPath, string(base)+section)
 }
 
 func runtimeLabel(name string) string {
