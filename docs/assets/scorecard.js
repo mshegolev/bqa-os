@@ -102,8 +102,13 @@
     const sessions = (result.profile && result.profile.sessions) || 0;
     if (!sessions) return 0;
     const volumeScore = clamp(sessions / 10, 0, 1) * 60;         // ~10 sessions = full volume
-    const grounded = (result.specs || []).filter((s) => (s.findings || 0) > 0).length;
-    const groundedScore = clamp(grounded / KNOWLEDGE_SPECS.length, 0, 1) * 40;
+    // project_profile.yaml is always generated and only echoes the session
+    // count, so it is not a domain "finding" — exclude it from groundedness so
+    // the evidence score reflects real domain coverage, not a free point.
+    const groundedSpecs = KNOWLEDGE_SPECS.filter((name) => name !== "project_profile.yaml");
+    const grounded = (result.specs || [])
+      .filter((s) => s.name !== "project_profile.yaml" && (s.findings || 0) > 0).length;
+    const groundedScore = clamp(grounded / groundedSpecs.length, 0, 1) * 40;
     return clamp(volumeScore + groundedScore, 0, 100);
   }
 
@@ -145,9 +150,11 @@
     // Weak dimensions (below the pilot-ready bar).
     for (const dim of DIMENSIONS) {
       if (dims[dim.key] < PILOT_READY_AT) {
-        if (dim.key === "agents") out.push("Agent guardrails need improvement");
+        if (dim.key === "knowledge") out.push("Knowledge coverage is thin — feed more QA sessions");
+        else if (dim.key === "agents") out.push("Agent guardrails need improvement");
         else if (dim.key === "workflow") out.push("No repeatable contract workflow detected");
         else if (dim.key === "evidence") out.push("Artifacts need more grounding sessions");
+        else if (dim.key === "pilot") out.push("Not pilot-ready yet — broaden domain coverage");
       }
     }
     // De-dup, keep order, cap to keep the panel scannable.

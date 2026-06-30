@@ -60,7 +60,10 @@ function extract(archive) {
     "data_quality_patterns.yaml", "common_bugs.yaml", "successful_prompts.yaml", "project_profile.yaml"];
   const specs = specOrder.map((name) => {
     const d = Object.keys(DOMAIN_DEFS).find((k) => DOMAIN_DEFS[k].spec === name);
-    const found = d ? (counts[d] || 0) : archive.sessions.length;
+    // Only domain specs carry real finding counts. project_profile.yaml (no
+    // matching domain) is a profile summary, not a finding — report 0 rather
+    // than echoing the session count as a fabricated finding total.
+    const found = d ? (counts[d] || 0) : 0;
     return { name, findings: found };
   });
 
