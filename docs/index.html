@@ -47,6 +47,64 @@
     details.help summary { cursor: pointer; font-family: var(--font-body); font-weight:700; font-size: 16px; color: var(--gold); }
     details.help pre { background: var(--stone-900); color: var(--forest-bright); padding: 12px; overflow-x: auto; font-size: 15px; }
     .domains { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0; }
+
+    /* ---- processing pipeline viewer (issue #43) ---- */
+    .forge-pipeline { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 8px; margin: 6px 0; }
+    .pstage { background: rgba(0,0,0,.28); padding: 9px 10px; box-shadow: inset 2px 2px 0 var(--bevel-dark); position: relative; transition: background .15s steps(2); }
+    .pstage .pg { font-size: 18px; color: var(--stone-500); }
+    .pstage b { display: block; font-family: var(--font-body); font-weight: 700; text-transform: uppercase; font-size: 14px; color: var(--stone-500); margin: 2px 0; }
+    .pstage small { font-size: 13px; color: var(--parchment-dim); }
+    .pstage.active { background: rgba(242,193,78,.12); }
+    .pstage.active .pg, .pstage.active b { color: var(--gold); }
+    .pstage.done { background: rgba(123,196,90,.12); }
+    .pstage.done .pg { color: var(--forest-bright); }
+    .pstage.done b { color: var(--bone); }
+    .pstage.done .pg::after { content: " ✓"; color: var(--forest-bright); }
+    @media (prefers-reduced-motion: reduce) { .pstage { transition: none; } }
+
+    /* ---- QA Memory Score (issue #46) ---- */
+    .scorecard { display: grid; gap: 12px; }
+    @media (min-width: 640px) { .scorecard { grid-template-columns: 168px 1fr; align-items: start; } }
+    .score-dial { display: grid; place-items: center; text-align: center; background: rgba(0,0,0,.28); padding: 14px; box-shadow: inset 2px 2px 0 var(--bevel-dark); }
+    .score-num { font-family: var(--font-display); font-size: 46px; line-height: 1; color: var(--gold); }
+    .score-num small { font-size: 18px; color: var(--stone-500); }
+    .score-band { font-family: var(--font-body); font-weight: 700; font-size: 22px; letter-spacing: 1px; margin-top: 4px; }
+    .score-band.ready { color: var(--forest-bright); } .score-band.notready { color: var(--gold-deep); }
+    .score-bandlabel { font-size: 13px; color: var(--parchment-dim); margin-top: 4px; }
+    .pilot-chip { font-size: 13px; margin-top: 8px; padding: 3px 8px; }
+    .pilot-chip.ready { background: rgba(123,196,90,.2); color: var(--forest-bright); }
+    .pilot-chip.notready { background: rgba(242,193,78,.16); color: var(--gold); }
+    .dim-row { display: grid; grid-template-columns: 150px 1fr 38px; gap: 8px; align-items: center; padding: 3px 0; font-size: 15px; }
+    .dim-row .dim-label { color: var(--parchment-dim); }
+    .dim-bar { height: 10px; background: var(--stone-900); box-shadow: inset 2px 2px 0 var(--bevel-dark); }
+    .dim-bar span { display: block; height: 100%; background: linear-gradient(90deg, var(--gold-deep), var(--gold)); }
+    .dim-row .dim-val { text-align: right; color: var(--bone); }
+    .score-meta { display: flex; gap: 14px; flex-wrap: wrap; margin-top: 8px; font-size: 15px; }
+    .score-meta b { color: var(--gold); }
+    ul.weak { list-style: none; padding: 0; margin: 8px 0 0; }
+    ul.weak li { padding: 5px 0 5px 18px; position: relative; font-size: 16px; color: var(--parchment); }
+    ul.weak li::before { content: "▼"; position: absolute; left: 0; color: var(--blood); font-size: 12px; top: 7px; }
+    .next-action { margin-top: 8px; padding: 8px 10px; background: rgba(242,193,78,.1); box-shadow: inset 2px 2px 0 var(--bevel-dark); font-size: 16px; }
+    .next-action b { color: var(--gold); }
+
+    /* ---- campaign scenario map (issue #44) ---- */
+    .campaign { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 10px; }
+    .node { background: rgba(0,0,0,.25); padding: 11px 12px; box-shadow: inset 2px 2px 0 var(--bevel-light), inset -2px -2px 0 var(--bevel-dark); opacity: .55; }
+    .node.on { opacity: 1; box-shadow: inset 2px 2px 0 var(--bevel-light), inset -2px -2px 0 var(--bevel-dark), 0 0 0 2px var(--gold-deep); }
+    .node-head { display: flex; align-items: baseline; gap: 8px; }
+    .node-head .ng { font-size: 19px; }
+    .node-head b { font-family: var(--font-body); font-weight: 700; font-size: 16px; color: var(--bone); }
+    .node-maps { font-size: 13px; color: var(--forest-bright); margin: 2px 0; font-family: monospace; }
+    .node-blurb { font-size: 14px; color: var(--parchment-dim); margin: 4px 0; }
+    .node-unlocks { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
+    .node-unlocks .chip { font-size: 12px; }
+    .node .lock { font-size: 12px; color: var(--stone-500); }
+
+    .pilot-cta { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: space-between;
+      background: linear-gradient(180deg, rgba(242,193,78,.12), rgba(0,0,0,.2)); padding: 14px 16px; box-shadow: inset 2px 2px 0 var(--bevel-dark); }
+    .pilot-cta p { margin: 0; max-width: 520px; font-size: 16px; color: var(--parchment); }
+    .pilot-cta .btn.primary-cta { font-size: 16px; padding: 12px 18px; }
+    .privacy-note { font-size: 14px; color: var(--stone-500); margin-top: 6px; }
   </style>
 </head>
 <body>
@@ -106,6 +164,15 @@
       </section>
 
       <section id="results">
+        <section class="panel" id="pipeline-panel">
+          <div class="panel-title">⚙ Forge pipeline — raw sessions → QA system</div>
+          <div class="forge-pipeline" id="pipeline" role="status" aria-live="polite"></div>
+        </section>
+        <section class="panel" id="score-panel">
+          <div class="panel-title">★ QA Memory Score</div>
+          <div class="scorecard" id="scorecard"></div>
+          <p class="next-action" id="next-action"></p>
+        </section>
         <section class="panel">
           <div class="panel-title">⚔ 2 · Your agents <span class="chip">from <span id="source-name">—</span></span></div>
           <div class="units" id="agents"></div>
@@ -120,6 +187,20 @@
       </section>
     </div>
 
+    <section class="panel" id="campaign-panel" style="margin-top:18px">
+      <div class="panel-title">🗺 QA campaign — scenarios unlock as you forge</div>
+      <p class="legend">Each node maps a real BQA-OS step: <code>discover</code> → <code>ingest2</code> → <code>build</code>, then discovery, pilot, domain and agent-progression scenarios. Load the demo or an archive to light them up.</p>
+      <div class="campaign" id="campaign"></div>
+    </section>
+
+    <section class="panel pilot-cta" id="pilot-cta" style="margin-top:18px">
+      <div>
+        <p><b>Turn QA history into reusable QA memory.</b> Run a 2-week QA Memory Pilot: we import 10–30 sanitized artifacts, build your knowledge pack, and ship 3–5 reusable workflows with a QA-Lead review session.</p>
+        <p class="privacy-note">Human-in-the-loop. Local-first. Use sanitized or synthetic artifacts only in demo mode — no private QA data leaves your machine.</p>
+      </div>
+      <a class="btn primary-cta" href="https://github.com/mshegolev/bqa-os/issues/new?title=Apply%20for%202-week%20QA%20Memory%20Pilot&labels=pilot" target="_blank" rel="noopener">🛡 Apply for 2-week QA Memory Pilot</a>
+    </section>
+
     <details class="help">
       <summary>Archive format (JSON, or a ZIP containing it)</summary>
       <p>A <code>sessions</code> array; each session has a <code>domain</code> (one of: <span class="domains"><span class="chip">etl</span><span class="chip">graphql</span><span class="chip">api</span><span class="chip">data_quality</span><span class="chip">bugs</span><span class="chip">prompts</span></span>) and some <code>text</code>.</p>
@@ -133,6 +214,8 @@
     <footer class="foot">BQA-OS · synthetic demo · forged in pixels</footer>
   </div>
 
+  <script src="assets/scorecard.js"></script>
+  <script src="assets/campaign.js"></script>
   <script src="assets/upload.js"></script>
 </body>
 </html>
