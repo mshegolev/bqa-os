@@ -115,5 +115,15 @@ func renderTeamPipelinePlan(out io.Writer, plan teampipeline.Plan) {
 		for _, command := range action.VerificationCommands {
 			fmt.Fprintf(out, "  verify: %s\n", command)
 		}
+		if action.BugSpec != nil {
+			fmt.Fprintf(out, "  bug title: %s\n", action.BugSpec.Title)
+			if len(action.BugSpec.Labels) > 0 {
+				fmt.Fprintf(out, "  bug labels: %s\n", strings.Join(action.BugSpec.Labels, ", "))
+			}
+			fmt.Fprintln(out, "  bug body:")
+			for _, line := range strings.Split(strings.TrimRight(action.BugSpec.Body, "\n"), "\n") {
+				fmt.Fprintf(out, "    %s\n", line)
+			}
+		}
 	}
 }
