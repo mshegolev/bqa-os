@@ -64,8 +64,8 @@ func (u UseCase) Run(ctx context.Context) (Result, error) {
 		if isFailureSignal(lower) {
 			findings["bugs"] = append(findings["bugs"], Finding{Name: "common_failure_signal", Domain: "bugs", Evidence: evidence(text, failureNeedle(lower)), SourcePath: entry.NormalizedPath})
 		}
-		if isPromptSignal(lower) {
-			findings["prompts"] = append(findings["prompts"], Finding{Name: "successful_prompt_candidate", Domain: "prompts", Evidence: evidence(text, promptNeedle(lower)), SourcePath: entry.NormalizedPath})
+		if prompt, ok := reusablePrompt(text); ok {
+			findings["prompts"] = append(findings["prompts"], Finding{Name: "successful_prompt_candidate", Domain: "prompts", Evidence: prompt, SourcePath: entry.NormalizedPath})
 		}
 		if isDroidSignal(sourcePath) {
 			profile.DroidSignals++
@@ -150,8 +150,137 @@ func isFailureSignal(text string) bool {
 	return textutil.HasAny(text, "failed", "failure", "error:", "panic", "regression", "flaky", "stack trace", "exception", "traceback")
 }
 
-func isPromptSignal(text string) bool {
-	return textutil.HasAny(text, "task:", "read .bqa", "act as", "please", "your task", "implement", "analyze this repository")
+// reusablePrompt extracts the most reusable, actionable prompt candidate from a
+// normalized session. It returns the trimmed candidate and true only when the
+// text carries enough task structure to be worth re-using later.
+//
+// A candidate must clear three independent guards:
+//   - minimum length (a one-liner like "please help" is too thin to reuse), and
+//     a sane maximum so we never copy a long raw transcript verbatim;
+//   - at least two task-structure signals out of {task intent / imperative verb,
+//     domain or system context, expected output or acceptance cue};
+//   - it must not be only pleasantries (polite filler with no task content).
+func reusablePrompt(text string) (string, bool) {
+	candidate := bestPromptCandidate(text)
+	if candidate == "" {
+		return "", false
+	}
+	lower := strings.ToLower(candidate)
+
+	if isOnlyPleasantries(lower) {
+		return "", false
+	}
+
+	signals := 0
+	if hasTaskIntent(lower) {
+		signals++
+	}
+	if hasDomainContext(lower) {
+		signals++
+	}
+	if hasAcceptanceCue(lower) {
+		signals++
+	}
+	if signals < 2 {
+		return "", false
+	}
+	return candidate, true
+}
+
+// promptMinLen / promptMaxLen bound a reusable prompt: long enough to carry task
+// structure, short enough that we never copy a raw transcript body wholesale.
+const (
+	promptMinLen = 40
+	promptMaxLen = 400
+)
+
+// bestPromptCandidate picks the strongest task-shaped segment of the cleaned
+// evidence text. It prefers an explicit task marker ("Task:", "Your task",
+// "Acceptance criteria") and otherwise falls back to the whole bounded text.
+// The returned candidate is always length-bounded so no raw session body leaks
+// through verbatim.
+func bestPromptCandidate(text string) string {
+	text = strings.TrimSpace(text)
+	if len(text) < promptMinLen {
+		return ""
+	}
+
+	lower := strings.ToLower(text)
+	for _, marker := range []string{"task:", "your task", "acceptance criteria", "goal:", "objective:"} {
+		if idx := strings.Index(lower, marker); idx >= 0 {
+			segment := strings.TrimSpace(text[idx:])
+			return boundPrompt(segment)
+		}
+	}
+	if !hasTaskIntent(lower) {
+		return ""
+	}
+	return boundPrompt(text)
+}
+
+func boundPrompt(segment string) string {
+	if len(segment) < promptMinLen {
+		return ""
+	}
+	if r := []rune(segment); len(r) > promptMaxLen {
+		// Slice on rune boundaries so a multi-byte character is never split.
+		segment = strings.TrimSpace(string(r[:promptMaxLen]))
+	}
+	return segment
+}
+
+// hasTaskIntent detects an explicit task marker or an imperative action verb,
+// i.e. the prompt actually asks for something concrete to be done.
+func hasTaskIntent(lower string) bool {
+	return textutil.HasAny(lower,
+		"task:", "your task", "act as", "goal:", "objective:", "read .bqa",
+		"implement", "generate", "write", "create", "build", "add ", "refactor",
+		"fix ", "design", "analyze", "review", "test ", "validate", "extract",
+		"migrate", "update", "verify",
+	)
+}
+
+// hasDomainContext detects domain or system context that grounds the task in a
+// concrete area, so the captured prompt is reusable rather than abstract.
+func hasDomainContext(lower string) bool {
+	// Keep domain-specific terms only. Generic prose words (test, function, table,
+	// module, component, bare "api"/"repo") were too broad and let polite chatter
+	// clear the domain gate.
+	return textutil.HasAny(lower,
+		"etl", "airflow", "spark", "hive", "oozie", "graphql", "rest api",
+		"endpoint", "schema", "pipeline", "data quality", "reconciliation",
+		"repository", "microservice", "database", "snowflake", "sql",
+		"resolver", "mutation", "kafka", "postgres", "warehouse",
+	)
+}
+
+// hasAcceptanceCue detects an expected-output or acceptance signal: the prompt
+// states how to tell the work is done, which is what makes it reusable.
+func hasAcceptanceCue(lower string) bool {
+	return textutil.HasAny(lower,
+		"acceptance criteria", "expected output", "expected result", "should return",
+		"must pass", "should pass", "ensure that", "so that", "output format",
+		"return format", "make sure", "verify that", "the result should",
+		"tests pass", "passing tests", "definition of done", "criteria",
+	)
+}
+
+// isOnlyPleasantries reports whether the text is polite filler with no task
+// content. We strip common courtesy tokens and, if almost nothing meaningful
+// remains, reject the candidate.
+func isOnlyPleasantries(lower string) bool {
+	stripped := lower
+	for _, polite := range []string{
+		"please", "thanks", "thank you", "could you", "would you", "can you",
+		"kindly", "appreciate", "hello", "hi ", "hey", "if you don't mind",
+		"i was wondering", "help me", "help ", "sorry",
+	} {
+		stripped = strings.ReplaceAll(stripped, polite, " ")
+	}
+	stripped = cleanEvidenceText(stripped)
+	// Remove punctuation-only residue.
+	stripped = strings.Trim(stripped, " .,!?;:-")
+	return len(stripped) < promptMinLen
 }
 
 func isDroidSignal(sourcePath string) bool {
@@ -212,9 +341,6 @@ func dqNeedle(text string) string {
 }
 func failureNeedle(text string) string {
 	return firstNeedle(text, "traceback", "exception", "failed", "failure", "error:", "panic", "regression", "flaky")
-}
-func promptNeedle(text string) string {
-	return firstNeedle(text, "task:", "your task", "read .bqa", "act as", "please", "implement", "analyze this repository")
 }
 func droidNeedle(sourcePath string) string {
 	if strings.Contains(sourcePath, "/.factory/") {
