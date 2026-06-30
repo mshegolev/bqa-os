@@ -429,14 +429,14 @@ function applySurvivalStartStage() {
   G.unlockedStage = Math.max(1, G.playerLevel || 1);
   G.startWave = firstWaveForStage(G.unlockedStage);
   G.wave = G.startWave - 1;
-  G.wavesSurvived = Math.max(0, G.wave);
+  G.wavesSurvived = 0;
   setSurvivalStageForWave(G.startWave);
   if (G.unlockedStage > 1) {
     logMsg("Player level " + G.playerLevel + " unlocks Stage " + G.unlockedStage + " — starting at wave " + G.startWave + ".", "high");
   }
 }
 function spawnSurvivalWave() {
-  if (G.wave > 0) G.wavesSurvived = G.wave;        // previous wave cleared
+  if (G.wave >= G.startWave) G.wavesSurvived = G.wave - G.startWave + 1;        // previous spawned wave cleared
   G.wave++;
   const w = G.wave;
   setSurvivalStageForWave(w);

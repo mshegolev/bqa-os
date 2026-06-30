@@ -103,7 +103,12 @@ test("survival starts at the stage unlocked by persistent player level", () => {
   assert.equal(thirdLevel.G.playerLevel, 3);
   assert.equal(thirdLevel.G.stage, 3);
   assert.equal(thirdLevel.G.wave, 7);
-  assert.equal(thirdLevel.G.wavesSurvived, 6);
+  assert.equal(thirdLevel.G.wavesSurvived, 0);
+
+  thirdLevel.spawnSurvivalWave();
+
+  assert.equal(thirdLevel.G.wave, 8);
+  assert.equal(thirdLevel.G.wavesSurvived, 1);
 });
 
 test("stage and level increase survival spawn density and enemy power", () => {
