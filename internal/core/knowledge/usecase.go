@@ -191,7 +191,7 @@ func reusablePrompt(text string) (string, bool) {
 // structure, short enough that we never copy a raw transcript body wholesale.
 const (
 	promptMinLen = 40
-	promptMaxLen = 600
+	promptMaxLen = 400
 )
 
 // bestPromptCandidate picks the strongest task-shaped segment of the cleaned
@@ -222,8 +222,9 @@ func boundPrompt(segment string) string {
 	if len(segment) < promptMinLen {
 		return ""
 	}
-	if len(segment) > promptMaxLen {
-		segment = strings.TrimSpace(segment[:promptMaxLen])
+	if r := []rune(segment); len(r) > promptMaxLen {
+		// Slice on rune boundaries so a multi-byte character is never split.
+		segment = strings.TrimSpace(string(r[:promptMaxLen]))
 	}
 	return segment
 }
@@ -242,11 +243,14 @@ func hasTaskIntent(lower string) bool {
 // hasDomainContext detects domain or system context that grounds the task in a
 // concrete area, so the captured prompt is reusable rather than abstract.
 func hasDomainContext(lower string) bool {
+	// Keep domain-specific terms only. Generic prose words (test, function, table,
+	// module, component, bare "api"/"repo") were too broad and let polite chatter
+	// clear the domain gate.
 	return textutil.HasAny(lower,
-		"etl", "airflow", "spark", "hive", "oozie", "graphql", "rest api", "api ",
+		"etl", "airflow", "spark", "hive", "oozie", "graphql", "rest api",
 		"endpoint", "schema", "pipeline", "data quality", "reconciliation",
-		"repository", "repo", "service", "module", "package", "database", "table",
-		"function", "component", "test", "validation", "snowflake", "sql",
+		"repository", "microservice", "database", "snowflake", "sql",
+		"resolver", "mutation", "kafka", "postgres", "warehouse",
 	)
 }
 
@@ -269,7 +273,7 @@ func isOnlyPleasantries(lower string) bool {
 	for _, polite := range []string{
 		"please", "thanks", "thank you", "could you", "would you", "can you",
 		"kindly", "appreciate", "hello", "hi ", "hey", "if you don't mind",
-		"i was wondering", "help me", "help", "sorry",
+		"i was wondering", "help me", "help ", "sorry",
 	} {
 		stripped = strings.ReplaceAll(stripped, polite, " ")
 	}

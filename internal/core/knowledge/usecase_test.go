@@ -160,6 +160,13 @@ func TestReusablePromptHeuristics(t *testing.T) {
 				strings.Repeat("blah ", 200),
 			want: false,
 		},
+		{
+			// Generic prose that happens to contain common words like "test" and
+			// "function" must NOT clear the domain gate (regression guard).
+			name: "polite prose with incidental tech words is rejected",
+			text: "Please let me know whenever you get a chance to test how the new function feels, thanks so much for your help.",
+			want: false,
+		},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
