@@ -191,10 +191,10 @@ func etlTestSpecTemplate() string {
 
 | ID | Check | Query or command | Expected result | Evidence |
 |----|-------|------------------|-----------------|----------|
-| ETL-001 | Source availability | synthetic query placeholder | source rows exist | |
-| ETL-002 | Target availability | synthetic query placeholder | target rows exist | |
-| ETL-003 | Reconciliation | synthetic query placeholder | counts match or accepted delta | |
-| ETL-004 | Data quality | synthetic query placeholder | no blocking nulls or duplicates | |
+| ETL-001 | Source availability | ` + "`SELECT COUNT(*) FROM demo_src.source_table WHERE business_date >= :date_start AND business_date < :date_end;`" + ` | source rows exist for the window | |
+| ETL-002 | Target availability | ` + "`SELECT COUNT(*) FROM demo_dw.target_table WHERE business_date >= :date_start AND business_date < :date_end;`" + ` | target rows exist for the window | |
+| ETL-003 | Reconciliation | ` + "`SELECT (SELECT COUNT(*) FROM demo_src.source_table WHERE business_date >= :date_start AND business_date < :date_end) AS src_rows, (SELECT COUNT(*) FROM demo_dw.target_table WHERE business_date >= :date_start AND business_date < :date_end) AS tgt_rows;`" + ` | counts match or within accepted delta | |
+| ETL-004 | Data quality | ` + "`SELECT COUNT(*) AS null_rows FROM demo_dw.target_table WHERE business_date >= :date_start AND business_date < :date_end AND required_field IS NULL; SELECT natural_key, COUNT(*) AS dup_count FROM demo_dw.target_table WHERE business_date >= :date_start AND business_date < :date_end GROUP BY natural_key HAVING COUNT(*) > 1;`" + ` | no blocking nulls (null_rows = 0) or duplicates (no rows) | |
 
 ## QA Result
 
