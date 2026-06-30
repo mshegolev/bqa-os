@@ -48,6 +48,45 @@ func TestUseCaseRoutesReadyQAStateToQAVerification(t *testing.T) {
 	}
 }
 
+func TestUseCaseDraftsBugSpecOnQARejectionPath(t *testing.T) {
+	issue := teamIssueWithLabels(27, "Ready QA task", "bqa:arch-approved", "bqa:ready-qa", "bqa:codex-team")
+	uc := UseCase{IssueSource: fakeIssueSource{issue: issue}}
+
+	plan, err := uc.Run(context.Background(), ports.TeamIssueRef{Repo: "mshegolev/bqa-os", Number: 27}, Options{})
+	if err != nil {
+		t.Fatalf("Run returned error: %v", err)
+	}
+
+	action := findAction(plan, "create-bug-issue")
+	if action == nil {
+		t.Fatalf("expected create-bug-issue action, got %#v", plan.Actions)
+	}
+	if action.BugSpec == nil {
+		t.Fatalf("expected QA rejection to draft a bug spec, got nil")
+	}
+	if action.BugSpec.Title != "Bug: Ready QA task" {
+		t.Fatalf("unexpected bug title %q", action.BugSpec.Title)
+	}
+	if !contains(action.BugSpec.Labels, "bqa:bug") || !contains(action.BugSpec.Labels, "bqa:ready-dev") {
+		t.Fatalf("expected bug labels to include bqa:bug and bqa:ready-dev, got %#v", action.BugSpec.Labels)
+	}
+	for _, fragment := range []string{
+		"## Context",
+		"## Goal",
+		"## Acceptance criteria",
+		"## Manual verification",
+		"mshegolev/bqa-os#27",
+		"go test ./...",
+	} {
+		if !strings.Contains(action.BugSpec.Body, fragment) {
+			t.Fatalf("expected bug body to contain %q, got:\n%s", fragment, action.BugSpec.Body)
+		}
+	}
+	if strings.Contains(strings.ToLower(action.BugSpec.Body), "secret") == false {
+		t.Fatalf("expected bug body to warn against secrets, got:\n%s", action.BugSpec.Body)
+	}
+}
+
 func TestUseCaseTreatsBlockedLabelAsHighestPriorityState(t *testing.T) {
 	issue := teamIssueWithLabels(27, "Blocked workflow task", "bqa:blocked", "bqa:arch-approved", "bqa:ready-dev", "bqa:codex-team")
 	uc := UseCase{IssueSource: fakeIssueSource{issue: issue}}

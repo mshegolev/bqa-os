@@ -3,6 +3,7 @@ package teampipeline
 import (
 	"context"
 	"errors"
+	"strconv"
 	"strings"
 
 	"github.com/mshegolev/bqa-os/internal/ports"
@@ -67,6 +68,16 @@ type Action struct {
 	AddLabels            []string
 	RemoveLabels         []string
 	VerificationCommands []string
+	BugSpec              *BugSpec
+}
+
+// BugSpec is the dry-run draft of a QA-rejection bug issue. It is generated
+// from the source issue and aligned with the BQA issue template so a human can
+// review the proposed bug before it is ever opened on GitHub.
+type BugSpec struct {
+	Title  string
+	Labels []string
+	Body   string
 }
 
 func (u UseCase) Run(ctx context.Context, ref ports.TeamIssueRef, opts Options) (Plan, error) {
@@ -123,19 +134,19 @@ func (u UseCase) Run(ctx context.Context, ref ports.TeamIssueRef, opts Options) 
 		plan.Actions = append(plan.Actions, businessAcceptanceActions()...)
 	case "qa-failed":
 		plan.Actions = append(plan.Actions, developmentActions(subagent, verification, true)...)
-		plan.Actions = append(plan.Actions, qaActions(verification)...)
+		plan.Actions = append(plan.Actions, qaActions(issue, ref.Repo, verification)...)
 		plan.Actions = append(plan.Actions, businessHandoffActions()...)
 	case "ready-qa":
-		plan.Actions = append(plan.Actions, qaActions(verification)...)
+		plan.Actions = append(plan.Actions, qaActions(issue, ref.Repo, verification)...)
 		plan.Actions = append(plan.Actions, businessHandoffActions()...)
 	case "in-dev":
 		plan.Actions = append(plan.Actions, developerRunAction(subagent, verification))
 		plan.Actions = append(plan.Actions, qaHandoffAction())
-		plan.Actions = append(plan.Actions, qaActions(verification)...)
+		plan.Actions = append(plan.Actions, qaActions(issue, ref.Repo, verification)...)
 		plan.Actions = append(plan.Actions, businessHandoffActions()...)
 	case "ready-dev":
 		plan.Actions = append(plan.Actions, developmentActions(subagent, verification, false)...)
-		plan.Actions = append(plan.Actions, qaActions(verification)...)
+		plan.Actions = append(plan.Actions, qaActions(issue, ref.Repo, verification)...)
 		plan.Actions = append(plan.Actions, businessHandoffActions()...)
 	case "arch-approved":
 		plan.Actions = append(plan.Actions, Action{
@@ -200,7 +211,8 @@ func qaHandoffAction() Action {
 	}
 }
 
-func qaActions(verification []string) []Action {
+func qaActions(issue ports.TeamIssue, repo string, verification []string) []Action {
+	bugLabels := []string{LabelBug, LabelQAFailed, LabelReadyDev, LabelCodexTeam}
 	return []Action{
 		{
 			Kind:                 "run-role",
@@ -213,8 +225,55 @@ func qaActions(verification []string) []Action {
 			Kind:        "create-bug-issue",
 			Role:        "QA",
 			Description: "QA rejection creates bug issue with synthetic or minimized evidence and a link back to the source issue.",
-			AddLabels:   []string{LabelBug, LabelQAFailed, LabelReadyDev, LabelCodexTeam},
+			AddLabels:   bugLabels,
+			BugSpec:     buildBugSpec(issue, repo, bugLabels, verification),
 		},
+	}
+}
+
+// buildBugSpec drafts a QA-rejection bug issue from the source issue, aligned
+// with the BQA issue template (Context / Goal / Acceptance criteria / Manual
+// verification). It only produces a draft; nothing is opened on GitHub.
+func buildBugSpec(issue ports.TeamIssue, repo string, labels []string, verification []string) *BugSpec {
+	title := strings.TrimSpace(issue.Title)
+	if title == "" {
+		title = "team pipeline issue"
+	}
+
+	source := "the source issue"
+	if issue.Number > 0 {
+		if repo = strings.TrimSpace(repo); repo != "" {
+			source = repo + "#" + strconv.Itoa(issue.Number)
+		} else {
+			source = "#" + strconv.Itoa(issue.Number)
+		}
+	}
+
+	var b strings.Builder
+	b.WriteString("## Context\n\n")
+	b.WriteString("QA rejected the implementation of " + source + " because acceptance criteria failed.\n")
+	b.WriteString("Evidence must be synthetic or minimized; do not attach private data, secrets, or real session logs.\n\n")
+	b.WriteString("## Goal\n\n")
+	b.WriteString("Fix the implementation so the source issue's acceptance criteria pass.\n\n")
+	b.WriteString("## Acceptance criteria\n\n")
+	b.WriteString("- [ ] The failing acceptance criteria from " + source + " now pass.\n")
+	b.WriteString("- [ ] Synthetic data only.\n")
+	b.WriteString("- [ ] Existing commands keep working.\n\n")
+	b.WriteString("## Manual verification\n\n")
+	b.WriteString("```bash\n")
+	if len(verification) == 0 {
+		b.WriteString("go test ./...\n")
+	} else {
+		for _, command := range verification {
+			b.WriteString(command + "\n")
+		}
+	}
+	b.WriteString("```\n")
+
+	return &BugSpec{
+		Title:  "Bug: " + title,
+		Labels: labels,
+		Body:   b.String(),
 	}
 }
 

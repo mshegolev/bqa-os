@@ -51,6 +51,11 @@ func TestTeamPipelineCmdPrintsReadyQAPlan(t *testing.T) {
 		"Verify acceptance criteria and manual checks",
 		"verify: go test ./...",
 		"QA rejection creates bug issue",
+		"bug title: Bug: Ready QA workflow bug",
+		"bug labels: bqa:bug",
+		"bug body:",
+		"## Manual verification",
+		"mshegolev/bqa-os#27",
 	} {
 		if !strings.Contains(output, expected) {
 			t.Fatalf("expected output to contain %q, got:\n%s", expected, output)
