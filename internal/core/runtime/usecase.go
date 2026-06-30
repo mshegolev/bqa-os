@@ -65,6 +65,56 @@ func (u UseCase) Prepare(ctx context.Context, runtime string) (PrepareResult, er
 	return res, nil
 }
 
+// InstallResult reports the project-local command helpers InstallCommands wrote.
+type InstallResult struct {
+	ContextPath string
+	Commands    []string
+}
+
+// RuntimeStatus reports whether a single runtime binary is installed.
+type RuntimeStatus struct {
+	Name       string
+	Found      bool
+	BinaryPath string
+}
+
+// InstallCommands writes the project-local BQA master context and the
+// /bqa-master command helpers for each supported runtime.
+func (u UseCase) InstallCommands(ctx context.Context) (InstallResult, error) {
+	if err := u.Writer.WriteRuntimeArtifact(ctx, masterContextPath, masterContext("project-local command")); err != nil {
+		return InstallResult{}, err
+	}
+
+	command := masterCommand()
+	commands := []string{
+		".bqa/runtime-commands/codex/bqa-master.md",
+		".bqa/runtime-commands/claude/bqa-master.md",
+		".bqa/runtime-commands/opencode/bqa-master.md",
+		".claude/commands/bqa-master.md",
+	}
+	for _, path := range commands {
+		if err := u.Writer.WriteRuntimeArtifact(ctx, path, command); err != nil {
+			return InstallResult{}, err
+		}
+	}
+
+	return InstallResult{ContextPath: masterContextPath, Commands: commands}, nil
+}
+
+// Detect reports the installation status of every supported runtime binary.
+func (u UseCase) Detect(ctx context.Context) ([]RuntimeStatus, error) {
+	statuses := make([]RuntimeStatus, 0, len(adapters))
+	for _, ad := range adapters {
+		path, found := u.Detector.Detect(ad.binary)
+		statuses = append(statuses, RuntimeStatus{
+			Name:       ad.name,
+			Found:      found,
+			BinaryPath: path,
+		})
+	}
+	return statuses, nil
+}
+
 func findAdapter(name string) (adapter, bool) {
 	for _, ad := range adapters {
 		if ad.name == name {
@@ -104,4 +154,29 @@ Default behavior:
 - For ambiguous tasks, inspect the repository before selecting a domain.
 - After task completion, propose memory updates for BQA Brain.
 `, runtimeName)
+}
+
+func masterCommand() string {
+	return `# /bqa-master
+
+Read .bqa/prompts/bqa-master-context.md and act as BQA Master Agent.
+
+Load project-local BQA artifacts before planning:
+
+- .bqa/registry/
+- .bqa/memory/
+- .bqa/agents/
+- .bqa/skills/
+- .bqa/workflows/
+- .bqa/rules/
+- .bqa/guardrails/
+
+Default workflow:
+
+1. Inspect the repository and current task context.
+2. Select the applicable BQA domain workflow.
+3. Create a short plan before changing files.
+4. Execute with tests and reproducible evidence.
+5. Propose BQA Brain memory updates for reusable findings.
+`
 }
