@@ -59,3 +59,30 @@ func TestDetectedSignalsSortedByCountThenName(t *testing.T) {
 		t.Fatalf("unexpected order: %+v", sigs)
 	}
 }
+
+func TestRenderFindingsV1Envelope(t *testing.T) {
+	out := renderFindings("etl_patterns", []Finding{
+		{Name: "etl_validation", Domain: "etl", Evidence: "row count reconciliation source table target table", SourcePath: "normalized/etl/s1.md"},
+	})
+	for _, want := range []string{
+		"schema_version: 1\n",
+		"kind: etl_patterns\n",
+		"generated_by: bqa ",
+		"patterns:\n",
+		"    domain:",
+		"    reusable_check:",
+		"    confidence: high\n",
+		"  - id:",
+	} {
+		if !strings.Contains(out, want) {
+			t.Fatalf("render missing %q, got:\n%s", want, out)
+		}
+	}
+}
+
+func TestRenderFindingsEmptyUsesFlowList(t *testing.T) {
+	out := renderFindings("graphql_patterns", nil)
+	if !strings.Contains(out, "kind: graphql_patterns\n") || !strings.Contains(out, "patterns: []\n") {
+		t.Fatalf("unexpected empty render:\n%s", out)
+	}
+}

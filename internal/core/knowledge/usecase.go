@@ -389,21 +389,30 @@ func firstNeedle(text string, values ...string) string {
 	return values[0]
 }
 
-func renderFindings(root string, items []Finding) string {
+func renderFindings(kind string, items []Finding) string {
 	var b strings.Builder
-	b.WriteString(root + ":\n")
+	b.WriteString(artifactHeader(kind))
 	if len(items) == 0 {
-		b.WriteString("  []\n")
+		b.WriteString("patterns: []\n")
 		return b.String()
 	}
 	items = uniqueFindings(items)
+	b.WriteString("patterns:\n")
 	for _, item := range items {
-		b.WriteString("  - name: " + textutil.QuoteYAML(item.Name) + "\n")
+		b.WriteString("  - id: " + textutil.QuoteYAML(findingID(item)) + "\n")
+		b.WriteString("    name: " + textutil.QuoteYAML(item.Name) + "\n")
 		b.WriteString("    domain: " + textutil.QuoteYAML(item.Domain) + "\n")
 		b.WriteString("    evidence: " + textutil.QuoteYAML(item.Evidence) + "\n")
 		b.WriteString("    source: " + textutil.QuoteYAML(item.SourcePath) + "\n")
+		b.WriteString("    reusable_check: " + textutil.QuoteYAML(reusableCheck(item)) + "\n")
+		b.WriteString("    confidence: " + findingConfidence(item) + "\n")
 	}
 	return b.String()
+}
+
+// artifactHeader renders the common v1 envelope shared by every artifact.
+func artifactHeader(kind string) string {
+	return fmt.Sprintf("schema_version: %d\nkind: %s\ngenerated_by: %s\n", SchemaVersion, kind, generatedBy())
 }
 
 func renderProfile(p ProjectProfile) string {
