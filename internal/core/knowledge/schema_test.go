@@ -113,3 +113,37 @@ func TestRenderProfileNoDomainsUsesEmptyList(t *testing.T) {
 		t.Fatalf("unexpected empty-profile render:\n%s", out)
 	}
 }
+
+func TestRenderIsDeterministic(t *testing.T) {
+	items := []Finding{
+		{Name: "etl_validation", Domain: "etl", Evidence: "row count reconciliation", SourcePath: "normalized/etl/s1.md"},
+		{Name: "api_contract_testing", Domain: "api", Evidence: "status code 500", SourcePath: "normalized/api/s2.md"},
+	}
+	if renderFindings("etl_patterns", items) != renderFindings("etl_patterns", items) {
+		t.Fatal("renderFindings is not deterministic")
+	}
+	p := ProjectProfile{Sessions: 5, ETLSignals: 2, APISignals: 1}
+	if renderProfile(p) != renderProfile(p) {
+		t.Fatal("renderProfile is not deterministic")
+	}
+}
+
+func TestPatternArtifactHasAllRequiredFields(t *testing.T) {
+	out := renderFindings("api_patterns", []Finding{
+		{Name: "api_contract_testing", Domain: "api", Evidence: "endpoint status code contract", SourcePath: "normalized/api/s1.md"},
+	})
+	for _, field := range []string{"schema_version:", "kind:", "generated_by:", "- id:", "name:", "domain:", "evidence:", "source:", "reusable_check:", "confidence:"} {
+		if !strings.Contains(out, field) {
+			t.Fatalf("pattern artifact missing required field %q", field)
+		}
+	}
+}
+
+func TestProfileArtifactHasAllRequiredFields(t *testing.T) {
+	out := renderProfile(ProjectProfile{Sessions: 4, ETLSignals: 2})
+	for _, field := range []string{"schema_version:", "kind: project_profile", "sessions_analyzed:", "domains_detected:", "signals:", "suggested_next_reviews:"} {
+		if !strings.Contains(out, field) {
+			t.Fatalf("profile artifact missing required field %q", field)
+		}
+	}
+}
