@@ -192,4 +192,7 @@ func TestCodexContextWithoutKnowledge(t *testing.T) {
 	if !strings.Contains(strings.ToLower(content), "do not expose raw or private logs") {
 		t.Errorf("expected privacy note even without knowledge")
 	}
+	if !strings.Contains(content, "Critical thinking & memory guardrails") {
+		t.Errorf("expected critical-thinking guardrails in the master context, got:\n%s", content)
+	}
 }
