@@ -4,6 +4,7 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/mshegolev/bqa-os/internal/adapters/fs"
@@ -31,6 +32,31 @@ func importUseCase() UseCase {
 	return UseCase{
 		Installer: fs.MemoryInstaller{},
 		Readers:   map[string]ports.ArchiveReader{"zip": fs.ZipArchive{}, "tar": fs.TarArchive{}},
+	}
+}
+
+func TestImportRejectsBundleWithoutRegistry(t *testing.T) {
+	tmp := t.TempDir()
+	bqa := filepath.Join(tmp, ".bqa")
+	writeBqa(t, bqa, map[string]string{"knowledge/etl.yaml": "schema_version: 1\n"}) // no registry/
+	bundle := filepath.Join(tmp, "noreg.zip")
+	exp := UseCase{Source: fs.MemorySource{}, Auditor: fs.MemoryAuditor{}, Writers: map[string]ports.ArchiveWriter{"zip": fs.ZipArchive{}}}
+	if _, err := exp.Export(context.Background(), ExportOptions{SourceRoot: bqa, Target: "zip", OutPath: bundle}); err != nil {
+		t.Fatalf("export: %v", err)
+	}
+	target := filepath.Join(tmp, "client")
+	if err := os.MkdirAll(target, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	_, err := importUseCase().Import(context.Background(), ImportOptions{FromPath: bundle, Target: target})
+	if err == nil {
+		t.Fatal("expected a clear error for a bundle missing registry/")
+	}
+	if !strings.Contains(err.Error(), "registry") {
+		t.Fatalf("error should mention registry, got: %v", err)
+	}
+	if _, statErr := os.Stat(filepath.Join(target, ".bqa")); !os.IsNotExist(statErr) {
+		t.Fatal("nothing must be installed when the registry check fails")
 	}
 }
 

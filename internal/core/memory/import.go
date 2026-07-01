@@ -62,6 +62,13 @@ func (u UseCase) Import(ctx context.Context, opts ImportOptions) (ImportResult, 
 		return ImportResult{}, err
 	}
 
+	// A bundle must carry a registry/ so brain.Install accepts it. Surface a
+	// clear, actionable error here rather than a confusing "invalid brain
+	// package" from the installer (e.g. after `export --exclude 'registry/*'`).
+	if !hasRegistry(payload) {
+		return ImportResult{}, errors.New("bundle is missing a required registry/ directory (re-export without excluding registry)")
+	}
+
 	res := ImportResult{Verified: true, DryRun: opts.DryRun}
 	if opts.DryRun {
 		return res, nil
@@ -115,4 +122,15 @@ func payloadFiles(files []ports.ArchiveFile) []ports.ArchiveFile {
 		}
 	}
 	return out
+}
+
+// hasRegistry reports whether the payload includes at least one registry/ file,
+// which brain.Install requires to accept the package.
+func hasRegistry(payload []ports.ArchiveFile) bool {
+	for _, f := range payload {
+		if strings.HasPrefix(f.Path, "registry/") {
+			return true
+		}
+	}
+	return false
 }
