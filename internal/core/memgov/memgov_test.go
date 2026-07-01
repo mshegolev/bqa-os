@@ -4,6 +4,8 @@ import (
 	"context"
 	"strings"
 	"testing"
+
+	"github.com/mshegolev/bqa-os/internal/ports"
 )
 
 func TestItemIDStableAndPrefixed(t *testing.T) {
@@ -121,5 +123,93 @@ func TestLoadStateEmptyWhenAbsent(t *testing.T) {
 	}
 	if len(got.SkillCandidates) != 0 || len(got.Lessons) != 0 || len(got.Log) != 0 {
 		t.Fatalf("expected empty state, got %#v", got)
+	}
+}
+
+type fakeSessions struct {
+	index ports.SessionIndex
+	files map[string]string
+}
+
+func (f fakeSessions) LoadSessionIndex(context.Context) (ports.SessionIndex, error) {
+	return f.index, nil
+}
+
+func (f fakeSessions) ReadNormalizedSession(_ context.Context, path string) (string, error) {
+	return f.files[path], nil
+}
+
+func learnFixture() (UseCase, *memStore) {
+	store := newMemStore()
+	reader := fakeSessions{
+		index: ports.SessionIndex{Entries: []ports.SessionIndexEntry{
+			{OriginalPath: "/s1.jsonl", NormalizedPath: "s1.md"},
+		}},
+		files: map[string]string{
+			"s1.md": "We ran the ETL reconciliation and compared source table vs target table row count. " +
+				"The job failed with a traceback during the null check.",
+		},
+	}
+	return UseCase{Reader: reader, Store: store, MemoryDir: ".bqa/memory"}, store
+}
+
+// hasItem reports whether items contains one with the given domain and status.
+func hasItem(items []MemoryItem, domain, status string) bool {
+	for _, it := range items {
+		if it.Domain == domain && it.Status == status {
+			return true
+		}
+	}
+	return false
+}
+
+func TestLearnExtractsPendingCandidates(t *testing.T) {
+	uc, store := learnFixture()
+	res, err := uc.Learn(context.Background())
+	if err != nil {
+		t.Fatalf("Learn: %v", err)
+	}
+	if res.SessionsProcessed != 1 {
+		t.Fatalf("expected 1 session processed, got %d", res.SessionsProcessed)
+	}
+	if res.SkillsAdded == 0 || res.LessonsAdded == 0 {
+		t.Fatalf("expected skills and lessons added, got %+v", res)
+	}
+	skills := store.files[".bqa/memory/skill_candidates.yaml"]
+	if !hasItem(parseItems(skills), "etl", StatusPending) {
+		t.Fatalf("skill_candidates missing pending etl item:\n%s", skills)
+	}
+	if !hasItem(parseItems(skills), "data_quality", StatusPending) {
+		t.Fatalf("skill_candidates missing pending data_quality item:\n%s", skills)
+	}
+	if res.SkillsAdded != 2 {
+		t.Fatalf("expected exactly 2 skill candidates (etl + data_quality), got %d", res.SkillsAdded)
+	}
+	// Evidence must be bounded (no raw dumps) and single line.
+	for _, it := range parseItems(skills) {
+		if len(it.Evidence) > evidenceWindow {
+			t.Fatalf("evidence not bounded: %d chars", len(it.Evidence))
+		}
+		if strings.Contains(it.Evidence, "\n") {
+			t.Fatalf("evidence should be single-line")
+		}
+	}
+	lessons := store.files[".bqa/memory/lessons_learned.yaml"]
+	if !hasItem(parseItems(lessons), "bugs", StatusPending) {
+		t.Fatalf("lessons_learned missing bugs item:\n%s", lessons)
+	}
+}
+
+func TestLearnIsIdempotent(t *testing.T) {
+	uc, _ := learnFixture()
+	if _, err := uc.Learn(context.Background()); err != nil {
+		t.Fatalf("first Learn: %v", err)
+	}
+	res, err := uc.Learn(context.Background())
+	if err != nil {
+		t.Fatalf("second Learn: %v", err)
+	}
+	if res.SkillsAdded != 0 || res.LessonsAdded != 0 {
+		t.Fatalf("second learn should add nothing, got %+v", res)
 	}
 }
