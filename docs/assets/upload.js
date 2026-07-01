@@ -95,7 +95,14 @@ function reusableCheck(f) {
    evidence with punctuation stays valid (mirrors textutil.QuoteYAML closely
    enough for the synthetic demo). */
 function quoteYaml(s) {
-  return '"' + String(s).replace(/\\/g, "\\\\").replace(/"/g, '\\"') + '"';
+  // Escape backslash, quote, and control whitespace so an embedded newline can
+  // never break out of the double-quoted scalar (mirrors Go textutil.QuoteYAML).
+  return '"' + String(s)
+    .replace(/\\/g, "\\\\")
+    .replace(/"/g, '\\"')
+    .replace(/\r/g, "\\r")
+    .replace(/\n/g, "\\n")
+    .replace(/\t/g, "\\t") + '"';
 }
 
 let LAST_OUTPUT = null; // { files: {name: content}, result: {...} }
@@ -231,7 +238,9 @@ function renderProfileYaml(result) {
       out += "    - " + quoteYaml("Review " + d + " coverage (" + signals[d] + " signals).") + "\n";
     }
   }
-  out += "  maturity: initial\n";
+  // Reflect the computed maturity so the emitted file matches the in-memory
+  // profile the scorecard/campaign read (avoids a file-vs-memory mismatch).
+  out += "  maturity: " + (result.profile.maturity || "initial") + "\n";
   return out;
 }
 
