@@ -106,6 +106,13 @@ func Status() error {
 	return run("git", "-C", cacheDir, "status", "--short")
 }
 
+// CacheDir returns the connected brain cache directory, or an error if the
+// brain is not connected (used by the github export backend).
+func CacheDir() (string, error) {
+	_, cacheDir, err := readConfig()
+	return cacheDir, err
+}
+
 func readConfig() (string, string, error) {
 	root, err := bqaHome()
 	if err != nil {
