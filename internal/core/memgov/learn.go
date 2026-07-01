@@ -11,6 +11,10 @@ import (
 // far below a transcript body so no raw session leaks verbatim.
 const evidenceWindow = 480
 
+// snippetLeadIn is how many bytes of context precede the matched needle in an
+// evidence snippet; the rest of the evidenceWindow follows it.
+const snippetLeadIn = 120
+
 // skillRule maps signal words to a stable skill-candidate name + domain.
 type skillRule struct {
 	needles []string
@@ -130,18 +134,19 @@ func collapse(text string) string {
 	return strings.Join(strings.Fields(text), " ")
 }
 
-// snippet returns a byte-bounded window of the (already collapsed) text centered
-// on the needle. The window is evidenceWindow bytes wide; rune-boundary snapping
-// may extend it by up to 3 bytes so a multi-byte character is never split. This
-// caps evidence length so a raw session body is never copied whole. Needles are
-// ASCII (see skillRules/failureNeedles), so the lowercase index maps cleanly onto
-// the original text's byte offsets.
+// snippet returns a byte-bounded window of the (already collapsed) text capturing
+// snippetLeadIn bytes of leading context before the needle, then filling the rest
+// of the evidenceWindow after it (right-weighted, not centered). Rune-boundary
+// snapping may extend the result by up to 3 bytes so a multi-byte character is
+// never split. This caps evidence length so a raw session body is never copied
+// whole. Needles are ASCII (see skillRules/failureNeedles), so the lowercase
+// index maps cleanly onto the original text's byte offsets.
 func snippet(text, lower, needle string) string {
 	idx := strings.Index(lower, needle)
 	if idx < 0 {
 		return boundRunes(text, evidenceWindow)
 	}
-	start := idx - 120
+	start := idx - snippetLeadIn
 	if start < 0 {
 		start = 0
 	}

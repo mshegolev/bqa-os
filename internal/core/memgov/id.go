@@ -12,6 +12,10 @@ import (
 // files diff and merge cleanly. The hash input format (kind|name|source) is a
 // persisted contract — changing it invalidates ids already written to disk.
 func ItemID(kind, name, source string) string {
+	prefix, ok := kindPrefix[kind]
+	if !ok {
+		panic("memgov: ItemID called with non-candidate kind " + kind)
+	}
 	sum := sha256.Sum256([]byte(kind + "|" + name + "|" + source))
-	return kindPrefix[kind] + "-" + hex.EncodeToString(sum[:])[:8]
+	return prefix + "-" + hex.EncodeToString(sum[:])[:8]
 }

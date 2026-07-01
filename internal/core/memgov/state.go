@@ -46,7 +46,9 @@ func loadState(ctx context.Context, store ports.GovernanceStore, memoryDir strin
 }
 
 // saveState writes all governance files deterministically. Re-writing unchanged
-// files is safe because render output is stable.
+// files is safe because render output is stable. Writes are per-file, not atomic
+// across files: if the process is interrupted mid-save, re-running `learn`
+// restores any dropped candidate.
 func saveState(ctx context.Context, store ports.GovernanceStore, memoryDir string, st GovernanceState) error {
 	byKind := map[string][]MemoryItem{
 		KindLessons:         st.Lessons,

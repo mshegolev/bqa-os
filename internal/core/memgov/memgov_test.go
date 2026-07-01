@@ -187,7 +187,7 @@ func TestLearnExtractsPendingCandidates(t *testing.T) {
 	}
 	// Evidence must be bounded (no raw dumps) and single line.
 	for _, it := range parseItems(skills) {
-		if len(it.Evidence) > evidenceWindow {
+		if len(it.Evidence) > evidenceWindow+3 {
 			t.Fatalf("evidence not bounded: %d chars", len(it.Evidence))
 		}
 		if strings.Contains(it.Evidence, "\n") {
@@ -380,4 +380,13 @@ func TestPromoteSkillCandidateByID(t *testing.T) {
 	if !strings.Contains(store.files[".bqa/memory/approved_patterns.yaml"], "id: "+skillID) {
 		t.Fatalf("promoted skill id missing from approved_patterns")
 	}
+}
+
+func TestItemIDPanicsOnUnknownKind(t *testing.T) {
+	defer func() {
+		if recover() == nil {
+			t.Fatalf("expected panic for non-candidate kind")
+		}
+	}()
+	_ = ItemID(KindApproved, "x", "y")
 }
