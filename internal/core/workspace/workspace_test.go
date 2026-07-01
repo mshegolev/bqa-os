@@ -1,6 +1,8 @@
 package workspace
 
 import (
+	"context"
+	"errors"
 	"strings"
 	"testing"
 )
@@ -47,5 +49,226 @@ func TestGeneratedByDeterministic(t *testing.T) {
 	// version.Version is "dev" in tests, so the stamp is stable.
 	if !strings.Contains(Render(Workspace{Name: "x"}), "generated_by: bqa dev\n") {
 		t.Fatalf("expected deterministic generated_by stamp")
+	}
+}
+
+// memStore is an in-memory WorkspaceStore keyed by baseDir.
+type memStore struct{ files map[string]string }
+
+func newMemStore() *memStore { return &memStore{files: map[string]string{}} }
+
+func (m *memStore) Exists(_ context.Context, baseDir string) (bool, error) {
+	_, ok := m.files[baseDir]
+	return ok, nil
+}
+
+func (m *memStore) Load(_ context.Context, baseDir string) (string, error) {
+	return m.files[baseDir], nil
+}
+
+func (m *memStore) Save(_ context.Context, baseDir, content string) error {
+	m.files[baseDir] = content
+	return nil
+}
+
+// fakeInspector reports fixed answers for IsDir/IsGitRepo.
+type fakeInspector struct {
+	dir bool
+	git bool
+}
+
+func (f fakeInspector) IsDir(string) (bool, error)     { return f.dir, nil }
+func (f fakeInspector) IsGitRepo(string) (bool, error) { return f.git, nil }
+
+func newUC(store *memStore, insp fakeInspector) UseCase {
+	return UseCase{Store: store, Inspector: insp, BaseDir: ".bqa"}
+}
+
+func TestInitWritesEmptyWorkspace(t *testing.T) {
+	store := newMemStore()
+	uc := newUC(store, fakeInspector{dir: true, git: true})
+	res, err := uc.Init(context.Background(), "bigdata")
+	if err != nil {
+		t.Fatalf("Init: %v", err)
+	}
+	if res.Name != "bigdata" {
+		t.Fatalf("unexpected name: %q", res.Name)
+	}
+	content := store.files[".bqa"]
+	if !strings.Contains(content, "kind: workspace\n") || !strings.Contains(content, "projects: []\n") {
+		t.Fatalf("workspace not initialized as empty v1:\n%s", content)
+	}
+}
+
+func TestInitTwiceErrors(t *testing.T) {
+	store := newMemStore()
+	uc := newUC(store, fakeInspector{dir: true, git: true})
+	if _, err := uc.Init(context.Background(), "x"); err != nil {
+		t.Fatalf("first Init: %v", err)
+	}
+	before := store.files[".bqa"]
+	if _, err := uc.Init(context.Background(), "y"); err == nil {
+		t.Fatalf("expected error re-initializing")
+	}
+	if store.files[".bqa"] != before {
+		t.Fatalf("workspace overwritten by second init")
+	}
+}
+
+func TestAddAppendsProject(t *testing.T) {
+	store := newMemStore()
+	uc := newUC(store, fakeInspector{dir: true, git: true})
+	if _, err := uc.Init(context.Background(), "w"); err != nil {
+		t.Fatalf("Init: %v", err)
+	}
+	res, err := uc.Add(context.Background(), Project{ID: "main", Path: "/repos/bt", Repo: "bt", BranchRole: "base"})
+	if err != nil {
+		t.Fatalf("Add: %v", err)
+	}
+	if res.Warning != "" {
+		t.Fatalf("unexpected warning for git repo: %q", res.Warning)
+	}
+	got := Parse(store.files[".bqa"])
+	if len(got.Projects) != 1 || got.Projects[0].ID != "main" {
+		t.Fatalf("project not appended: %#v", got.Projects)
+	}
+}
+
+func TestAddNonGitWarnsButRecords(t *testing.T) {
+	store := newMemStore()
+	uc := newUC(store, fakeInspector{dir: true, git: false})
+	if _, err := uc.Init(context.Background(), "w"); err != nil {
+		t.Fatalf("Init: %v", err)
+	}
+	res, err := uc.Add(context.Background(), Project{ID: "main", Path: "/repos/bt", Repo: "bt", BranchRole: "base"})
+	if err != nil {
+		t.Fatalf("Add: %v", err)
+	}
+	if res.Warning == "" {
+		t.Fatalf("expected non-git warning")
+	}
+	if len(Parse(store.files[".bqa"]).Projects) != 1 {
+		t.Fatalf("non-git project should still be recorded")
+	}
+}
+
+func TestAddMissingDirErrors(t *testing.T) {
+	store := newMemStore()
+	uc := newUC(store, fakeInspector{dir: false, git: false})
+	if _, err := uc.Init(context.Background(), "w"); err != nil {
+		t.Fatalf("Init: %v", err)
+	}
+	before := store.files[".bqa"]
+	if _, err := uc.Add(context.Background(), Project{ID: "main", Path: "/nope", Repo: "bt"}); err == nil {
+		t.Fatalf("expected error for missing dir")
+	}
+	if store.files[".bqa"] != before {
+		t.Fatalf("workspace changed after failed add")
+	}
+}
+
+func TestAddDuplicateIDErrors(t *testing.T) {
+	store := newMemStore()
+	uc := newUC(store, fakeInspector{dir: true, git: true})
+	if _, err := uc.Init(context.Background(), "w"); err != nil {
+		t.Fatalf("Init: %v", err)
+	}
+	if _, err := uc.Add(context.Background(), Project{ID: "main", Path: "/a", Repo: "bt"}); err != nil {
+		t.Fatalf("first Add: %v", err)
+	}
+	before := store.files[".bqa"]
+	if _, err := uc.Add(context.Background(), Project{ID: "main", Path: "/b", Repo: "bt"}); err == nil {
+		t.Fatalf("expected duplicate id error")
+	}
+	if store.files[".bqa"] != before {
+		t.Fatalf("workspace changed after failed duplicate add")
+	}
+}
+
+func TestAddBeforeInitErrors(t *testing.T) {
+	uc := newUC(newMemStore(), fakeInspector{dir: true, git: true})
+	if _, err := uc.Add(context.Background(), Project{ID: "main", Path: "/a", Repo: "bt"}); err == nil {
+		t.Fatalf("expected not-initialized error")
+	}
+}
+
+func TestListReturnsProjectsInOrder(t *testing.T) {
+	store := newMemStore()
+	uc := newUC(store, fakeInspector{dir: true, git: true})
+	if _, err := uc.Init(context.Background(), "w"); err != nil {
+		t.Fatalf("Init: %v", err)
+	}
+	for _, id := range []string{"a", "b", "c"} {
+		if _, err := uc.Add(context.Background(), Project{ID: id, Path: "/" + id, Repo: "bt"}); err != nil {
+			t.Fatalf("Add %s: %v", id, err)
+		}
+	}
+	res, err := uc.List(context.Background())
+	if err != nil {
+		t.Fatalf("List: %v", err)
+	}
+	ids := []string{}
+	for _, p := range res.Workspace.Projects {
+		ids = append(ids, p.ID)
+	}
+	if strings.Join(ids, ",") != "a,b,c" {
+		t.Fatalf("expected insertion order a,b,c, got %v", ids)
+	}
+}
+
+func TestListBeforeInitErrors(t *testing.T) {
+	uc := newUC(newMemStore(), fakeInspector{dir: true, git: true})
+	if _, err := uc.List(context.Background()); err == nil {
+		t.Fatalf("expected not-initialized error")
+	}
+}
+
+// errInspector returns a configured error from the named method.
+type errInspector struct {
+	failDir bool
+	failGit bool
+}
+
+func (e errInspector) IsDir(string) (bool, error) {
+	if e.failDir {
+		return false, errors.New("isdir boom")
+	}
+	return true, nil
+}
+
+func (e errInspector) IsGitRepo(string) (bool, error) {
+	if e.failGit {
+		return false, errors.New("isgit boom")
+	}
+	return true, nil
+}
+
+func TestAddPropagatesIsDirError(t *testing.T) {
+	store := newMemStore()
+	uc := UseCase{Store: store, Inspector: errInspector{failDir: true}, BaseDir: ".bqa"}
+	if _, err := uc.Init(context.Background(), "w"); err != nil {
+		t.Fatalf("Init: %v", err)
+	}
+	before := store.files[".bqa"]
+	if _, err := uc.Add(context.Background(), Project{ID: "main", Path: "/a", Repo: "bt"}); err == nil {
+		t.Fatalf("expected IsDir error to propagate")
+	}
+	if store.files[".bqa"] != before {
+		t.Fatalf("workspace changed after IsDir error")
+	}
+}
+
+func TestAddPropagatesIsGitRepoError(t *testing.T) {
+	store := newMemStore()
+	uc := UseCase{Store: store, Inspector: errInspector{failGit: true}, BaseDir: ".bqa"}
+	if _, err := uc.Init(context.Background(), "w"); err != nil {
+		t.Fatalf("Init: %v", err)
+	}
+	before := store.files[".bqa"]
+	if _, err := uc.Add(context.Background(), Project{ID: "main", Path: "/a", Repo: "bt"}); err == nil {
+		t.Fatalf("expected IsGitRepo error to propagate")
+	}
+	if store.files[".bqa"] != before {
+		t.Fatalf("workspace changed after IsGitRepo error")
 	}
 }
