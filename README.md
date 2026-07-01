@@ -13,10 +13,10 @@ BQA-OS is designed to connect QA knowledge, agents, skills, workflows, guardrail
 The steps below use the `bqa` CLI (for `sanitize`, `codex`, etc.). Install it first:
 
 ```bash
-brew install go   # macOS; needs a Go toolchain
 mkdir -p ~/develop && cd ~/develop
 git clone git@git.ringcentral.com:BIAnalyticsPlatform/aiqa/bqa-os.git
 cd bqa-os
+bash install.sh --check-go  # fast check; install/upgrade Go only if this fails
 bash install.sh
 export PATH="$HOME/.local/bin:$PATH"
 bqa --help        # verify
@@ -266,9 +266,9 @@ The public repository contains the runtime engine. Private project value should 
 Early installer requires Go:
 
 ```bash
-brew install go
 git clone git@git.ringcentral.com:BIAnalyticsPlatform/aiqa/bqa-os.git ~/develop/bqa-os
 cd ~/develop/bqa-os
+bash install.sh --check-go
 bash install.sh
 export PATH="$HOME/.local/bin:$PATH"
 ```
