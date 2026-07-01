@@ -29,10 +29,12 @@ func (TarArchive) WriteArchive(ctx context.Context, outPath string, files []port
 	if err := writeTarFiles(ctx, tw, files); err != nil {
 		_ = tw.Close()
 		_ = out.Close()
+		_ = os.Remove(outPath) // don't leave a partial archive behind
 		return err
 	}
 	if err := tw.Close(); err != nil {
 		_ = out.Close()
+		_ = os.Remove(outPath)
 		return err
 	}
 	return out.Close()
@@ -94,9 +96,13 @@ func (TarArchive) ReadArchive(ctx context.Context, inPath string) ([]ports.Archi
 		if err != nil {
 			return nil, err
 		}
-		data, err := io.ReadAll(tr)
+		// h.Size can be spoofed, so cap the actual read as well.
+		data, err := io.ReadAll(io.LimitReader(tr, maxArchiveEntrySize+1))
 		if err != nil {
 			return nil, err
+		}
+		if int64(len(data)) > maxArchiveEntrySize {
+			return nil, fmt.Errorf("archive entry %q exceeds size limit (%d bytes)", name, maxArchiveEntrySize)
 		}
 		out = append(out, ports.ArchiveFile{Path: name, Data: data})
 	}

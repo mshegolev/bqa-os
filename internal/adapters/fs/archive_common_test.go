@@ -9,6 +9,9 @@ func TestCleanArchivePathRejectsTraversal(t *testing.T) {
 	if _, err := cleanArchivePath("/abs"); err == nil {
 		t.Fatal("expected error for absolute path")
 	}
+	if _, err := cleanArchivePath(".."); err == nil {
+		t.Fatal("expected error for bare .. path")
+	}
 	got, err := cleanArchivePath("knowledge\\etl.yaml")
 	if err != nil || got != "knowledge/etl.yaml" {
 		t.Fatalf("cleanArchivePath normalize = %q, %v", got, err)

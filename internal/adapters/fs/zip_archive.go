@@ -29,10 +29,12 @@ func (ZipArchive) WriteArchive(ctx context.Context, outPath string, files []port
 	if err := writeZipFiles(ctx, zw, files); err != nil {
 		_ = zw.Close()
 		_ = out.Close()
+		_ = os.Remove(outPath) // don't leave a partial archive behind
 		return err
 	}
 	if err := zw.Close(); err != nil {
 		_ = out.Close()
+		_ = os.Remove(outPath)
 		return err
 	}
 	return out.Close()
@@ -89,14 +91,20 @@ func (ZipArchive) ReadArchive(ctx context.Context, inPath string) ([]ports.Archi
 		if err != nil {
 			return nil, err
 		}
+		if zf.UncompressedSize64 > maxArchiveEntrySize {
+			return nil, fmt.Errorf("archive entry %q exceeds size limit (%d bytes)", name, zf.UncompressedSize64)
+		}
 		rc, err := zf.Open()
 		if err != nil {
 			return nil, err
 		}
-		data, err := io.ReadAll(rc)
+		data, err := io.ReadAll(io.LimitReader(rc, maxArchiveEntrySize+1))
 		rc.Close()
 		if err != nil {
 			return nil, err
+		}
+		if int64(len(data)) > maxArchiveEntrySize {
+			return nil, fmt.Errorf("archive entry %q exceeds size limit (%d bytes)", name, maxArchiveEntrySize)
 		}
 		out = append(out, ports.ArchiveFile{Path: name, Data: data})
 	}
