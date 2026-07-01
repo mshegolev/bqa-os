@@ -87,33 +87,33 @@ func TestE2EDiscoverIngestBuildProducesKnowledge(t *testing.T) {
 	}
 
 	// Each domain signal from the synthetic notes must surface in its artifact.
-	// We assert the top-level YAML key plus a populated finding (the artifact is
-	// not the empty "[]" placeholder).
+	// We assert the v1 kind plus a populated finding (the artifact is
+	// not the empty "patterns: []" placeholder).
 	domainChecks := []struct {
 		file    string
 		rootKey string
 	}{
-		{"etl_patterns.yaml", "etl_patterns:"},
-		{"graphql_patterns.yaml", "graphql_patterns:"},
-		{"api_patterns.yaml", "api_patterns:"},
-		{"data_quality_patterns.yaml", "data_quality_patterns:"},
-		{"common_bugs.yaml", "common_bugs:"},
-		{"successful_prompts.yaml", "successful_prompts:"},
+		{"etl_patterns.yaml", "kind: etl_patterns"},
+		{"graphql_patterns.yaml", "kind: graphql_patterns"},
+		{"api_patterns.yaml", "kind: api_patterns"},
+		{"data_quality_patterns.yaml", "kind: data_quality_patterns"},
+		{"common_bugs.yaml", "kind: common_bugs"},
+		{"successful_prompts.yaml", "kind: successful_prompts"},
 	}
 	for _, dc := range domainChecks {
 		body := readFile(t, filepath.Join(knowledgeDir, dc.file))
 		if !strings.Contains(body, dc.rootKey) {
-			t.Fatalf("%s missing root key %q, got:\n%s", dc.file, dc.rootKey, body)
+			t.Fatalf("%s missing kind %q, got:\n%s", dc.file, dc.rootKey, body)
 		}
-		if !strings.Contains(body, "- name:") {
+		if !strings.Contains(body, "- id:") {
 			t.Fatalf("%s has no findings (expected non-empty domain signal), got:\n%s", dc.file, body)
 		}
 	}
 
 	// project_profile must record at least one analyzed session.
 	profile := readFile(t, filepath.Join(knowledgeDir, "project_profile.yaml"))
-	if !strings.Contains(profile, "project_profile:") {
-		t.Fatalf("project_profile.yaml missing root key, got:\n%s", profile)
+	if !strings.Contains(profile, "kind: project_profile") {
+		t.Fatalf("project_profile.yaml missing kind, got:\n%s", profile)
 	}
 	if strings.Contains(profile, "sessions_analyzed: 0") || !strings.Contains(profile, "sessions_analyzed:") {
 		t.Fatalf("project_profile.yaml should report a non-zero sessions_analyzed, got:\n%s", profile)
