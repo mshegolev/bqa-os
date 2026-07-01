@@ -466,6 +466,6 @@ func uniqueFindings(items []Finding) []Finding {
 			break
 		}
 	}
-	sort.Slice(out, func(i, j int) bool { return out[i].SourcePath < out[j].SourcePath })
+	sort.SliceStable(out, func(i, j int) bool { return out[i].SourcePath < out[j].SourcePath })
 	return out
 }

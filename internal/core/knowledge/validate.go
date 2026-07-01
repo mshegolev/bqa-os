@@ -49,7 +49,7 @@ func Validate(ctx context.Context, reader ports.KnowledgeArtifactReader) Validat
 			report.Issues = append(report.Issues, ValidationIssue{Filename: spec.Filename, Detail: "file is empty"})
 			continue
 		}
-		if !strings.Contains(content, fmt.Sprintf("schema_version: %d", SchemaVersion)) {
+		if !strings.Contains(content, fmt.Sprintf("schema_version: %d\n", SchemaVersion)) {
 			report.Issues = append(report.Issues, ValidationIssue{Filename: spec.Filename, Detail: fmt.Sprintf("missing or unsupported schema_version (want %d)", SchemaVersion)})
 			continue
 		}
