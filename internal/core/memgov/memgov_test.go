@@ -242,3 +242,142 @@ func TestReviewListsOnlyPending(t *testing.T) {
 		}
 	}
 }
+
+func firstPendingID(t *testing.T, uc UseCase) string {
+	t.Helper()
+	res, err := uc.Review(context.Background())
+	if err != nil {
+		t.Fatalf("Review: %v", err)
+	}
+	if len(res.Pending) == 0 {
+		t.Fatalf("no pending candidates to decide")
+	}
+	return res.Pending[0].ID
+}
+
+func TestPromoteMovesItemAndLogs(t *testing.T) {
+	uc, store := learnFixture()
+	if _, err := uc.Learn(context.Background()); err != nil {
+		t.Fatalf("Learn: %v", err)
+	}
+	id := firstPendingID(t, uc)
+
+	res, err := uc.Promote(context.Background(), id)
+	if err != nil {
+		t.Fatalf("Promote: %v", err)
+	}
+	if res.Action != "promoted" || res.Item.ID != id || res.Item.Status != StatusApproved {
+		t.Fatalf("unexpected promote result: %#v", res)
+	}
+	approved := store.files[".bqa/memory/approved_patterns.yaml"]
+	if !strings.Contains(approved, "id: "+id) || !strings.Contains(approved, "status: approved") {
+		t.Fatalf("approved_patterns missing promoted item:\n%s", approved)
+	}
+	// Removed from its candidate list.
+	for _, list := range []string{"lessons_learned.yaml", "skill_candidates.yaml"} {
+		if strings.Contains(store.files[".bqa/memory/"+list], "id: "+id) {
+			t.Fatalf("promoted id still present in %s", list)
+		}
+	}
+	if !strings.Contains(store.files[".bqa/memory/decision_log.yaml"], "action: promoted") {
+		t.Fatalf("decision_log missing promotion entry")
+	}
+}
+
+func TestRejectMovesItemToRejected(t *testing.T) {
+	uc, store := learnFixture()
+	if _, err := uc.Learn(context.Background()); err != nil {
+		t.Fatalf("Learn: %v", err)
+	}
+	id := firstPendingID(t, uc)
+
+	res, err := uc.Reject(context.Background(), id)
+	if err != nil {
+		t.Fatalf("Reject: %v", err)
+	}
+	if res.Action != "rejected" || res.Item.Status != StatusRejected {
+		t.Fatalf("unexpected reject result: %#v", res)
+	}
+	rejected := store.files[".bqa/memory/rejected_patterns.yaml"]
+	if !strings.Contains(rejected, "id: "+id) || !strings.Contains(rejected, "status: rejected") {
+		t.Fatalf("rejected_patterns missing item:\n%s", rejected)
+	}
+	for _, list := range []string{"lessons_learned.yaml", "skill_candidates.yaml"} {
+		if strings.Contains(store.files[".bqa/memory/"+list], "id: "+id) {
+			t.Fatalf("rejected id still present in %s", list)
+		}
+	}
+}
+
+func snapshotFiles(m map[string]string) map[string]string {
+	out := make(map[string]string, len(m))
+	for k, v := range m {
+		out[k] = v
+	}
+	return out
+}
+
+func TestDecideTwiceErrorsAndLeavesFilesUnchanged(t *testing.T) {
+	uc, store := learnFixture()
+	if _, err := uc.Learn(context.Background()); err != nil {
+		t.Fatalf("Learn: %v", err)
+	}
+	id := firstPendingID(t, uc)
+	if _, err := uc.Promote(context.Background(), id); err != nil {
+		t.Fatalf("first Promote: %v", err)
+	}
+	before := snapshotFiles(store.files)
+
+	if _, err := uc.Promote(context.Background(), id); err == nil {
+		t.Fatalf("expected error promoting an already-decided id")
+	}
+	after := store.files
+	if len(after) != len(before) {
+		t.Fatalf("file set changed: before=%d after=%d", len(before), len(after))
+	}
+	for k, v := range before {
+		if after[k] != v {
+			t.Fatalf("file %q changed after failed second promote", k)
+		}
+	}
+}
+
+func TestPromoteUnknownIDErrors(t *testing.T) {
+	uc, _ := learnFixture()
+	if _, err := uc.Learn(context.Background()); err != nil {
+		t.Fatalf("Learn: %v", err)
+	}
+	if _, err := uc.Promote(context.Background(), "skill-doesnotexist"); err == nil {
+		t.Fatalf("expected error for unknown id")
+	}
+}
+
+func TestPromoteSkillCandidateByID(t *testing.T) {
+	uc, store := learnFixture()
+	if _, err := uc.Learn(context.Background()); err != nil {
+		t.Fatalf("Learn: %v", err)
+	}
+	res, err := uc.Review(context.Background())
+	if err != nil {
+		t.Fatalf("Review: %v", err)
+	}
+	var skillID string
+	for _, it := range res.Pending {
+		if strings.HasPrefix(it.ID, "skill-") {
+			skillID = it.ID
+			break
+		}
+	}
+	if skillID == "" {
+		t.Fatalf("no skill candidate to promote")
+	}
+	if _, err := uc.Promote(context.Background(), skillID); err != nil {
+		t.Fatalf("Promote skill: %v", err)
+	}
+	if strings.Contains(store.files[".bqa/memory/skill_candidates.yaml"], "id: "+skillID) {
+		t.Fatalf("promoted skill id still present in skill_candidates")
+	}
+	if !strings.Contains(store.files[".bqa/memory/approved_patterns.yaml"], "id: "+skillID) {
+		t.Fatalf("promoted skill id missing from approved_patterns")
+	}
+}
