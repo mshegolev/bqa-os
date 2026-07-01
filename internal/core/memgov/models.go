@@ -30,12 +30,9 @@ var kindPrefix = map[string]string{
 	KindSkillCandidates: "skill",
 }
 
-// candidateFiles lists the two files that hold reviewable candidates.
-// stateFiles lists every governance file (candidates + decided + log).
-var (
-	candidateFiles = []string{KindLessons, KindSkillCandidates}
-	stateFiles     = []string{KindLessons, KindSkillCandidates, KindApproved, KindRejected, KindDecisionLog}
-)
+// itemKinds are the four governance files that hold MemoryItem lists (the
+// decision log has a different schema and is handled separately).
+var itemKinds = []string{KindLessons, KindSkillCandidates, KindApproved, KindRejected}
 
 // fileName returns the on-disk filename for a kind.
 func fileName(kind string) string { return kind + ".yaml" }
