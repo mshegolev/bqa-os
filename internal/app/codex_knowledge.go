@@ -6,6 +6,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/mshegolev/bqa-os/internal/core/guardrails"
 	"github.com/mshegolev/bqa-os/internal/core/knowledge"
 	"github.com/mshegolev/bqa-os/internal/ports"
 )
@@ -189,6 +190,7 @@ func renderKnowledgeSection(profile string, summaries map[string]knowledgeSummar
 	}
 
 	b.WriteString(codexUsageInstructions())
+	b.WriteString("\n" + guardrails.CriticalThinking() + "\n")
 	b.WriteString(privacyNote())
 	return b.String()
 }
@@ -201,6 +203,7 @@ func codexNoKnowledgeSection() string {
 	b.WriteString("No `.bqa/knowledge/*.yaml` artifacts were found yet. ")
 	b.WriteString("Run `bqa discover`, `bqa ingest`, then `bqa build` to extract project-specific QA knowledge, ")
 	b.WriteString("then re-run `bqa codex` to embed it into this context.\n\n")
+	b.WriteString(guardrails.CriticalThinking() + "\n")
 	b.WriteString(privacyNote())
 	return b.String()
 }

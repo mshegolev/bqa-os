@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/mshegolev/bqa-os/internal/catalog"
+	"github.com/mshegolev/bqa-os/internal/core/guardrails"
 	"github.com/mshegolev/bqa-os/internal/ports"
 )
 
@@ -24,6 +25,7 @@ func (u UseCase) Run(ctx context.Context) (Result, error) {
 		"agents/runtime-agent.md":                 catalog.RuntimeAgentContent(),
 		"workflows/etl-verification-workflow.md":  catalog.Workflow("etl-verification-workflow").Content,
 		"workflows/session-knowledge-workflow.md": catalog.Workflow("session-knowledge-workflow").Content,
+		"guardrails/critical-thinking.md":         guardrails.CriticalThinking(),
 		"registry/index.yaml":                     registryIndex(),
 		"registry/skills.yaml":                    catalog.RegistrySkillsYAML(),
 		"registry/agents.yaml":                    catalog.RegistryAgentsYAML(),
