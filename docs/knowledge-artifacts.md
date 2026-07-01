@@ -117,7 +117,13 @@ generated_by: bqa dev
 profile:
   sessions_analyzed: 12
   domains_detected: [etl, graphql, api]      # domains with signals > 0
-  signals: { etl: 8, graphql: 3, api: 2, data_quality: 0, droid: 0, runtime: 0 }
+  signals:
+    etl: 8
+    graphql: 3
+    api: 2
+    data_quality: 0
+    droid: 0
+    runtime: 0
   suggested_next_reviews:
     - "Review etl coverage (8 signals)."
     - "Review graphql coverage (3 signals)."
