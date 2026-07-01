@@ -49,9 +49,17 @@ func TestAcceptanceInstalledQAAgentWorkflow(t *testing.T) {
 			"Task: plan acceptance testing for a nightly ETL pipeline run.\n" +
 			"Acceptance criteria: reconciliation passes and no data-quality regressions.\n",
 		"knowledge/etl_patterns.yaml": "" +
-			"etl_patterns:\n" +
-			"  - name: row_count_reconciliation\n" +
-			"    detail: compare source and target row counts\n",
+			"schema_version: 1\n" +
+			"kind: etl_patterns\n" +
+			"generated_by: bqa dev\n" +
+			"patterns:\n" +
+			"  - id: \"etl-00000000\"\n" +
+			"    name: \"row_count_reconciliation\"\n" +
+			"    domain: \"etl\"\n" +
+			"    evidence: \"compare source and target row counts for the window\"\n" +
+			"    source: \"normalized/etl/s1.md\"\n" +
+			"    reusable_check: \"compare source vs target row counts for the window\"\n" +
+			"    confidence: low\n",
 	}
 	writeAcceptancePackage(t, pkgDir, pkgFiles)
 

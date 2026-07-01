@@ -30,21 +30,32 @@ be answered from the artifact text plus a quick glance at the cited `source`.
 | `runtime_patterns.yaml` | Runtime execution patterns (tool calls, sandbox, approvals) |
 | `project_profile.yaml` | Aggregate signal counts and maturity |
 
-Each pattern entry has the same shape:
+Every artifact opens with the same v1 envelope (`schema_version` / `kind` /
+`generated_by`). Each pattern entry has the same shape:
 
 ```yaml
-etl_patterns:
-  - name: "reconciliation_row_count_check"
+schema_version: 1
+kind: etl_patterns
+generated_by: bqa dev
+patterns:
+  - id: "etl-0a1b2c3d"
+    name: "reconciliation_row_count_check"
     domain: "etl"
     evidence: "verified target row count matched source after the spark reconciliation job"
-    source: ".bqa/input/sessions/normalized/claude/session-0007.json"
+    source: "normalized/claude/session-0007.json"
+    reusable_check: "compare source vs target row counts for the window"
+    confidence: medium
 ```
 
 `project_profile.yaml` is counts only:
 
 ```yaml
-project_profile:
+schema_version: 1
+kind: project_profile
+generated_by: bqa dev
+profile:
   sessions_analyzed: 12
+  domains_detected: [etl, runtime, data_quality, api]
   signals:
     etl: 9
     graphql: 0
@@ -52,6 +63,8 @@ project_profile:
     data_quality: 4
     droid: 0
     runtime: 7
+  suggested_next_reviews:
+    - "Review etl coverage (9 signals)."
   maturity: initial
 ```
 
@@ -77,13 +90,14 @@ different verdicts.
 ## 1. Artifact completeness
 
 - [ ] All nine expected files exist in `.bqa/knowledge/`.
-- [ ] Each artifact's top-level YAML key matches its filename (e.g.
-      `etl_patterns.yaml` → `etl_patterns:`).
-- [ ] Empty domains render an explicit empty list (`etl_patterns:\n  []`),
-      **not** a malformed or missing key.
-- [ ] Every pattern entry has all four fields populated: `name`, `domain`,
-      `evidence`, `source`. An entry missing `evidence` or `source` is
-      incomplete and cannot be verified — flag it.
+- [ ] Each artifact opens with the v1 envelope (`schema_version: 1`,
+      `kind: <filename minus .yaml>`, `generated_by:`), and `kind` matches the
+      filename (e.g. `etl_patterns.yaml` → `kind: etl_patterns`).
+- [ ] Empty domains render an explicit empty list (`patterns: []`), **not** a
+      malformed or missing key.
+- [ ] Every pattern entry has all fields populated: `id`, `name`, `domain`,
+      `evidence`, `source`, `reusable_check`, `confidence`. An entry missing
+      `evidence` or `source` is incomplete and cannot be verified — flag it.
 - [ ] `project_profile.yaml` signal counts are roughly consistent with the
       number of entries in the matching artifacts (e.g. `signals.etl: 9` but
       `etl_patterns` has 0 entries is a red flag — investigate before trusting

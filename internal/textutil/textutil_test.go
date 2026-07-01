@@ -20,6 +20,9 @@ func TestQuoteYAML(t *testing.T) {
 		`a"b`:          `"a\"b"`,
 		`a\b`:          `"a\\b"`,
 		`he said "hi"`: `"he said \"hi\""`,
+		"line1\nline2": `"line1\nline2"`,
+		"tab\there":    `"tab\there"`,
+		"cr\rend":      `"cr\rend"`,
 	}
 	for in, want := range cases {
 		if got := QuoteYAML(in); got != want {

@@ -229,35 +229,69 @@ Verify that fictional project board GraphQL operations keep stable contract shap
 }
 
 func apiPatterns() string {
-	return `synthetic_api_patterns:
-  - name: "status_code_first"
+	return `schema_version: 1
+kind: api_patterns
+generated_by: bqa demo
+patterns:
+  - id: "api-de000001"
+    name: "status_code_first"
     domain: "api"
     evidence: "Synthetic REST checks verify HTTP status before response payload fields."
-  - name: "negative_missing_id"
+    source: "normalized/demo/api-1.md"
+    reusable_check: "assert endpoint status code and response contract"
+    confidence: medium
+  - id: "api-de000002"
+    name: "negative_missing_id"
     domain: "api"
     evidence: "Synthetic missing id check verifies stable 404 behavior."
+    source: "normalized/demo/api-2.md"
+    reusable_check: "assert endpoint status code and response contract"
+    confidence: low
 `
 }
 
 func dataQualityPatterns() string {
-	return `synthetic_data_quality_patterns:
-  - name: "row_count_reconciliation"
+	return `schema_version: 1
+kind: data_quality_patterns
+generated_by: bqa demo
+patterns:
+  - id: "data_quality-de000001"
+    name: "row_count_reconciliation"
     domain: "data_quality"
     evidence: "Synthetic source and target row counts are compared before field checks."
-  - name: "duplicate_business_key"
+    source: "normalized/demo/dq-1.md"
+    reusable_check: "assert null / duplicate / schema-drift rules pass"
+    confidence: medium
+  - id: "data_quality-de000002"
+    name: "duplicate_business_key"
     domain: "data_quality"
     evidence: "Synthetic duplicate checks use account id, event type, and event date."
+    source: "normalized/demo/dq-2.md"
+    reusable_check: "assert null / duplicate / schema-drift rules pass"
+    confidence: medium
 `
 }
 
 func projectProfile() string {
-	return `synthetic_project_profile:
+	return `# Synthetic demo project profile — illustrative only.
+schema_version: 1
+kind: project_profile
+generated_by: bqa demo
+profile:
   sessions_analyzed: 3
+  domains_detected: [api, data_quality, graphql]
   signals:
-    api: 1
+    etl: 0
     graphql: 1
+    api: 1
     data_quality: 1
-  maturity: "demo"
+    droid: 0
+    runtime: 0
+  suggested_next_reviews:
+    - "Review api coverage (1 signals)."
+    - "Review data_quality coverage (1 signals)."
+    - "Review graphql coverage (1 signals)."
+  maturity: initial
 `
 }
 

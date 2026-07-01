@@ -9,7 +9,7 @@ import (
 )
 
 // seedKnowledge writes a couple of synthetic knowledge artifacts under
-// .bqa/knowledge in the current working directory, mirroring the flat YAML
+// .bqa/knowledge in the current working directory, mirroring the v1 YAML
 // format produced by knowledge.UseCase.
 func seedKnowledge(t *testing.T) {
 	t.Helper()
@@ -19,43 +19,73 @@ func seedKnowledge(t *testing.T) {
 	}
 
 	files := map[string]string{
-		"etl_patterns.yaml": `etl_patterns:
-  - name: "etl_validation"
+		"etl_patterns.yaml": `schema_version: 1
+kind: etl_patterns
+generated_by: bqa dev
+patterns:
+  - id: etl-00000000
+    name: "etl_validation"
     domain: "etl"
     evidence: "spark dag run reprocessed a partition after retries and removed duplicates"
     source: "normalized/etl/session-1.txt"
+    reusable_check: "assert no unexpected nulls or duplicate keys"
+    confidence: high
 `,
-		"data_quality_patterns.yaml": `data_quality_patterns:
-  - name: "data_quality_validation"
+		"data_quality_patterns.yaml": `schema_version: 1
+kind: data_quality_patterns
+generated_by: bqa dev
+patterns:
+  - id: data_quality-00000000
+    name: "data_quality_validation"
     domain: "data_quality"
     evidence: "row count reconciliation flagged schema drift and a null check on required field"
     source: "normalized/etl/session-2.txt"
+    reusable_check: "assert null / duplicate / schema-drift rules pass"
+    confidence: high
 `,
-		"common_bugs.yaml": `common_bugs:
-  - name: "common_failure_signal"
+		"common_bugs.yaml": `schema_version: 1
+kind: common_bugs
+generated_by: bqa dev
+patterns:
+  - id: bugs-00000000
+    name: "common_failure_signal"
     domain: "bugs"
     evidence: "job failed with duplicate rows and a schema drift exception"
     source: "normalized/etl/session-3.txt"
+    reusable_check: "add a regression check reproducing the failure signal"
+    confidence: high
 `,
-		"successful_prompts.yaml": `successful_prompts:
-  - name: "successful_prompt_candidate"
+		"successful_prompts.yaml": `schema_version: 1
+kind: successful_prompts
+generated_by: bqa dev
+patterns:
+  - id: prompts-00000000
+    name: "successful_prompt_candidate"
     domain: "prompts"
     evidence: "task: validate etl reconciliation for the daily partition"
     source: "normalized/etl/session-4.txt"
+    reusable_check: "task: validate etl reconciliation for the daily partition"
+    confidence: high
 `,
-		"graphql_patterns.yaml": "graphql_patterns:\n  []\n",
-		"api_patterns.yaml":     "api_patterns:\n  []\n",
-		"droid_patterns.yaml":   "droid_patterns:\n  []\n",
-		"runtime_patterns.yaml": "runtime_patterns:\n  []\n",
-		"project_profile.yaml": `project_profile:
+		"graphql_patterns.yaml": "schema_version: 1\nkind: graphql_patterns\ngenerated_by: bqa dev\npatterns: []\n",
+		"api_patterns.yaml":     "schema_version: 1\nkind: api_patterns\ngenerated_by: bqa dev\npatterns: []\n",
+		"droid_patterns.yaml":   "schema_version: 1\nkind: droid_patterns\ngenerated_by: bqa dev\npatterns: []\n",
+		"runtime_patterns.yaml": "schema_version: 1\nkind: runtime_patterns\ngenerated_by: bqa dev\npatterns: []\n",
+		"project_profile.yaml": `schema_version: 1
+kind: project_profile
+generated_by: bqa dev
+profile:
   sessions_analyzed: 4
+  domains_detected: [etl]
   signals:
     etl: 2
     graphql: 0
     api: 0
-    data_quality: 1
+    data_quality: 0
     droid: 0
     runtime: 0
+  suggested_next_reviews:
+    - "Review etl coverage (2 signals)."
   maturity: initial
 `,
 	}

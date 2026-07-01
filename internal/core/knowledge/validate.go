@@ -29,10 +29,12 @@ func (r ValidationReport) OK() bool {
 }
 
 // Validate inspects the knowledge artifacts produced by `bqa build` using the
-// shared ExpectedArtifacts contract. It checks, for each expected file, that it
-// exists, is non-empty, and contains its root key. project_profile.yaml must
-// additionally contain a session count (sessions_analyzed). The total artifact
-// count is compared against the contract. It never reaches external services.
+// shared ExpectedArtifacts contract. For each expected file it checks that the
+// file exists, is non-empty, and carries the v1 envelope: the supported
+// `schema_version` and a matching `kind`. Pattern files must contain a
+// `patterns:` list; project_profile.yaml must contain a `profile:` block with
+// `sessions_analyzed`. The total artifact count is compared against the
+// contract. It never reaches external services.
 func Validate(ctx context.Context, reader ports.KnowledgeArtifactReader) ValidationReport {
 	expected := ExpectedArtifacts()
 	report := ValidationReport{Expected: len(expected)}
@@ -47,12 +49,21 @@ func Validate(ctx context.Context, reader ports.KnowledgeArtifactReader) Validat
 			report.Issues = append(report.Issues, ValidationIssue{Filename: spec.Filename, Detail: "file is empty"})
 			continue
 		}
-		if !strings.Contains(content, spec.RootKey+":") {
-			report.Issues = append(report.Issues, ValidationIssue{Filename: spec.Filename, Detail: fmt.Sprintf("missing root key %q", spec.RootKey)})
+		if !strings.Contains(content, fmt.Sprintf("schema_version: %d\n", SchemaVersion)) {
+			report.Issues = append(report.Issues, ValidationIssue{Filename: spec.Filename, Detail: fmt.Sprintf("missing or unsupported schema_version (want %d)", SchemaVersion)})
 			continue
 		}
-		if spec.RootKey == "project_profile" && !strings.Contains(content, "sessions_analyzed:") {
-			report.Issues = append(report.Issues, ValidationIssue{Filename: spec.Filename, Detail: "missing session count (sessions_analyzed)"})
+		if !strings.Contains(content, "kind: "+spec.RootKey) {
+			report.Issues = append(report.Issues, ValidationIssue{Filename: spec.Filename, Detail: fmt.Sprintf("missing or wrong kind (want %q)", spec.RootKey)})
+			continue
+		}
+		if spec.RootKey == "project_profile" {
+			if !strings.Contains(content, "profile:") || !strings.Contains(content, "sessions_analyzed:") {
+				report.Issues = append(report.Issues, ValidationIssue{Filename: spec.Filename, Detail: "missing profile block or sessions_analyzed"})
+				continue
+			}
+		} else if !strings.Contains(content, "patterns:") {
+			report.Issues = append(report.Issues, ValidationIssue{Filename: spec.Filename, Detail: "missing patterns list"})
 			continue
 		}
 		// Passed every check.

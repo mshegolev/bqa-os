@@ -24,6 +24,14 @@ const DEMO_ARCHIVE = {
   ]
 };
 
+/* Knowledge artifact schema version emitted by this web mirror. Must match
+   internal/core/knowledge/contract.go (SchemaVersion) so the demo output is the
+   same v1 shape a real `bqa build` writes. */
+const KNOWLEDGE_SCHEMA_VERSION = 1;
+/* Provenance stamp. This is the browser build, so it is "bqa web" (the Go CLI
+   stamps "bqa dev" in tests / "bqa vX.Y.Z" in a release). */
+const GENERATED_BY = "bqa web";
+
 /* Domain -> generated unit metadata (RTS flavour) -------------------- */
 const DOMAIN_DEFS = {
   etl:          { agent: "etl-qa-agent",           workflow: "etl_validation_workflow",   spec: "etl_patterns.yaml",          role: "Siege Engineer", color: "var(--forest-bright)", glyph: "⛏" },
@@ -33,6 +41,69 @@ const DOMAIN_DEFS = {
   bugs:         { agent: "regression-hunter-agent",workflow: "regression_triage_workflow",spec: "common_bugs.yaml",           role: "Bug Hunter",     color: "var(--blood)",         glyph: "☠" },
   prompts:      { agent: "prompt-librarian-agent", workflow: "prompt_library_workflow",   spec: "successful_prompts.yaml",    role: "Loremaster",     color: "var(--parchment)",     glyph: "✦" }
 };
+
+/* Per-domain metadata used to render v1 knowledge findings. Mirrors the fixed
+   finding names, per-domain keyword sets (for confidence), and reusable_check
+   templates in internal/core/knowledge (usecase.go / schema.go). */
+const KNOWLEDGE_DOMAINS = {
+  etl:          { spec: "etl_patterns.yaml",          findingName: "etl_validation",             reusableCheck: "compare source vs target row counts for the window",       keywords: ["airflow", "spark", "hive", "oozie", "dag", "reconciliation", "source table", "target table", "row count", "parquet", "pipeline", "partition", "schedule"] },
+  graphql:      { spec: "graphql_patterns.yaml",      findingName: "graphql_functional_testing", reusableCheck: "assert query/mutation response shape and error handling",   keywords: ["graphql", "query", "mutation", "schema", "resolver", "variables", "pagination", "auth", "error"] },
+  api:          { spec: "api_patterns.yaml",          findingName: "api_contract_testing",        reusableCheck: "assert endpoint status code and response contract",        keywords: ["rest api", "http status", "status code", "endpoint", "contract", "openapi", "swagger", "request", "response"] },
+  data_quality: { spec: "data_quality_patterns.yaml", findingName: "data_quality_validation",     reusableCheck: "assert null / duplicate / schema-drift rules pass",        keywords: ["data quality", "schema drift", "null", "duplicate", "row count", "checksum", "unique", "validation"] },
+  bugs:         { spec: "common_bugs.yaml",           findingName: "common_failure_signal",       reusableCheck: "add a regression check reproducing the failure signal",    keywords: ["failed", "failure", "error", "panic", "regression", "flaky", "stack trace", "exception", "traceback"] },
+  prompts:      { spec: "successful_prompts.yaml",    findingName: "successful_prompt_candidate", reusableCheck: null /* prompts echo the evidence itself */,               keywords: ["task", "goal", "acceptance", "implement", "verify", "context"] },
+};
+
+/* fnv1a32 is a tiny deterministic hash (no crypto dependency, works on file://).
+   The Go side uses sha256; here we only need a stable 8-hex id per finding so the
+   demo artifacts look and diff like real ones. */
+function fnv1a32(str) {
+  let h = 0x811c9dc5;
+  for (let i = 0; i < str.length; i++) {
+    h ^= str.charCodeAt(i);
+    h = (h + ((h << 1) + (h << 4) + (h << 7) + (h << 8) + (h << 24))) >>> 0;
+  }
+  return ("0000000" + h.toString(16)).slice(-8);
+}
+
+/* findingId returns "<domain>-<8 hex>", stable in domain|name|source (mirrors
+   findingID in internal/core/knowledge/schema.go). */
+function findingId(f) {
+  return f.domain + "-" + fnv1a32(f.domain + "|" + f.name + "|" + f.source);
+}
+
+/* findingConfidence: low/medium/high by distinct domain keywords in evidence
+   (high >= 3, medium 2, low otherwise) — mirrors findingConfidence in schema.go. */
+function findingConfidence(f) {
+  const lower = String(f.evidence || "").toLowerCase();
+  const kws = (KNOWLEDGE_DOMAINS[f.domain] || {}).keywords || [];
+  let n = 0;
+  for (const kw of kws) if (lower.includes(kw)) n++;
+  return n >= 3 ? "high" : n === 2 ? "medium" : "low";
+}
+
+/* reusableCheck per domain; prompts return the evidence text itself (mirrors
+   reusableCheck in schema.go). */
+function reusableCheck(f) {
+  const def = KNOWLEDGE_DOMAINS[f.domain];
+  if (!def) return "add a check that reproduces this signal";
+  if (f.domain === "prompts") return f.evidence;
+  return def.reusableCheck;
+}
+
+/* quoteYaml double-quotes a scalar for YAML, escaping backslashes and quotes so
+   evidence with punctuation stays valid (mirrors textutil.QuoteYAML closely
+   enough for the synthetic demo). */
+function quoteYaml(s) {
+  // Escape backslash, quote, and control whitespace so an embedded newline can
+  // never break out of the double-quoted scalar (mirrors Go textutil.QuoteYAML).
+  return '"' + String(s)
+    .replace(/\\/g, "\\\\")
+    .replace(/"/g, '\\"')
+    .replace(/\r/g, "\\r")
+    .replace(/\n/g, "\\n")
+    .replace(/\t/g, "\\t") + '"';
+}
 
 let LAST_OUTPUT = null; // { files: {name: content}, result: {...} }
 
@@ -70,7 +141,37 @@ function extract(archive) {
   const recommendations = buildRecommendations(domains, counts, archive.sessions.length);
   const profile = { sessions: archive.sessions.length, signals: counts, maturity: domains.length >= 4 ? "established" : "initial" };
 
-  return { agents, workflows, specs, recommendations, profile };
+  // Collect real per-domain findings from the sessions so the emitted
+  // knowledge/*.yaml carries evidence + source, not just a count.
+  const findings = collectFindings(archive.sessions);
+
+  return { agents, workflows, specs, recommendations, profile, findings };
+}
+
+/* collectFindings groups sessions by domain into v1 findings. Evidence is the
+   session's sanitized text (bounded), source is a synthetic normalized path.
+   Only domains known to KNOWLEDGE_DOMAINS produce findings. */
+function collectFindings(sessions) {
+  const byDomain = {};
+  for (const s of sessions) {
+    const d = String(s.domain || "").toLowerCase();
+    const def = KNOWLEDGE_DOMAINS[d];
+    if (!def) continue;
+    const tool = String(s.tool || "session").toLowerCase();
+    const evidence = String(s.text || s.title || "").replace(/\s+/g, " ").trim().slice(0, 480);
+    const finding = {
+      name: def.findingName,
+      domain: d,
+      evidence,
+      source: "normalized/" + tool + "/" + (s.id || "session") + ".txt",
+    };
+    (byDomain[d] = byDomain[d] || []).push(finding);
+  }
+  // Deterministic order by source (mirrors uniqueFindings sort in schema.go).
+  for (const d of Object.keys(byDomain)) {
+    byDomain[d].sort((a, b) => (a.source < b.source ? -1 : a.source > b.source ? 1 : 0));
+  }
+  return byDomain;
 }
 
 function buildRecommendations(domains, counts, total) {
@@ -85,14 +186,74 @@ function buildRecommendations(domains, counts, total) {
   return recs;
 }
 
-/* --- YAML-ish + output assembly ------------------------------------ */
-function renderSpecYaml(spec) {
-  return "# generated by BQA-OS Archive Decoder (synthetic)\n" +
-    spec.name.replace(".yaml", "") + ":\n  findings: " + spec.findings + "\n  source: synthetic_demo_archive\n";
+/* --- YAML + output assembly (v1 knowledge schema) ------------------- */
+// Emits the same v1 envelope as internal/core/knowledge (schema_version / kind /
+// generated_by), with a `patterns:` list for domain specs and a `profile:` block
+// for project_profile.yaml. Keep in sync with docs/knowledge-artifacts.md.
+function artifactHeader(kind) {
+  return "schema_version: " + KNOWLEDGE_SCHEMA_VERSION + "\n" +
+    "kind: " + kind + "\n" +
+    "generated_by: " + GENERATED_BY + "\n";
+}
+
+function renderPatternsYaml(kind, findings) {
+  let out = artifactHeader(kind);
+  if (!findings || !findings.length) return out + "patterns: []\n";
+  out += "patterns:\n";
+  for (const f of findings) {
+    out += "  - id: " + quoteYaml(findingId(f)) + "\n";
+    out += "    name: " + quoteYaml(f.name) + "\n";
+    out += "    domain: " + quoteYaml(f.domain) + "\n";
+    out += "    evidence: " + quoteYaml(f.evidence) + "\n";
+    out += "    source: " + quoteYaml(f.source) + "\n";
+    out += "    reusable_check: " + quoteYaml(reusableCheck(f)) + "\n";
+    out += "    confidence: " + findingConfidence(f) + "\n";
+  }
+  return out;
+}
+
+function renderProfileYaml(result) {
+  const signals = {
+    etl: 0, graphql: 0, api: 0, data_quality: 0, droid: 0, runtime: 0,
+    ...(result.profile.signals || {}),
+  };
+  // Domains with signals > 0, ordered by count desc then name asc (deterministic).
+  const detected = ["etl", "graphql", "api", "data_quality", "droid", "runtime"]
+    .filter((d) => signals[d] > 0)
+    .sort((a, b) => (signals[b] - signals[a]) || (a < b ? -1 : 1));
+
+  let out = artifactHeader("project_profile");
+  out += "profile:\n";
+  out += "  sessions_analyzed: " + result.profile.sessions + "\n";
+  out += "  domains_detected: [" + detected.join(", ") + "]\n";
+  out += "  signals:\n";
+  for (const d of ["etl", "graphql", "api", "data_quality", "droid", "runtime"]) {
+    out += "    " + d + ": " + signals[d] + "\n";
+  }
+  out += "  suggested_next_reviews:\n";
+  if (!detected.length) {
+    out += "    []\n";
+  } else {
+    for (const d of detected) {
+      out += "    - " + quoteYaml("Review " + d + " coverage (" + signals[d] + " signals).") + "\n";
+    }
+  }
+  // Reflect the computed maturity so the emitted file matches the in-memory
+  // profile the scorecard/campaign read (avoids a file-vs-memory mismatch).
+  out += "  maturity: " + (result.profile.maturity || "initial") + "\n";
+  return out;
+}
+
+function renderSpecYaml(spec, result) {
+  if (spec.name === "project_profile.yaml") return renderProfileYaml(result);
+  const kind = spec.name.replace(".yaml", "");
+  const domain = Object.keys(KNOWLEDGE_DOMAINS).find((d) => KNOWLEDGE_DOMAINS[d].spec === spec.name);
+  const findings = domain ? ((result.findings || {})[domain] || []) : [];
+  return renderPatternsYaml(kind, findings);
 }
 function buildOutputFiles(result) {
   const files = {};
-  for (const spec of result.specs) files["knowledge/" + spec.name] = renderSpecYaml(spec);
+  for (const spec of result.specs) files["knowledge/" + spec.name] = renderSpecYaml(spec, result);
   files["agents/agents.md"] = "# Generated agents (synthetic)\n\n" +
     result.agents.map((a) => "- **" + a.name + "** (" + a.role + ") - lvl " + a.level + ", domain " + a.domain).join("\n") + "\n";
   files["workflows/workflows.md"] = "# Generated workflows (synthetic)\n\n" +

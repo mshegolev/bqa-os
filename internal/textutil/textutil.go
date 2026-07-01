@@ -15,9 +15,14 @@ func HasAny(text string, needles ...string) bool {
 }
 
 // QuoteYAML escapes a value for use as a double-quoted YAML scalar: it escapes
-// backslashes and double quotes, then wraps the result in double quotes.
+// backslashes, double quotes, and control whitespace (newline/carriage-return/
+// tab) so an embedded newline never breaks out of the scalar, then wraps the
+// result in double quotes. The escapes match what unquoteYAMLScalar reverses.
 func QuoteYAML(value string) string {
 	value = strings.ReplaceAll(value, "\\", "\\\\")
 	value = strings.ReplaceAll(value, "\"", "\\\"")
+	value = strings.ReplaceAll(value, "\r", "\\r")
+	value = strings.ReplaceAll(value, "\n", "\\n")
+	value = strings.ReplaceAll(value, "\t", "\\t")
 	return "\"" + value + "\""
 }

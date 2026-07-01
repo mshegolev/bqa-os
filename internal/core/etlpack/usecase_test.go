@@ -111,9 +111,9 @@ func TestUseCaseUsesInputsForAggregateStatisticsWithoutCopyingSessionContent(t *
 			"normalized/synthetic-etl-session.md": "Synthetic ETL reconciliation found row count mismatch and null check failure. synthetic-sensitive-marker-123",
 		},
 		knowledge: map[string]string{
-			"etl_patterns.yaml":          "etl_patterns:\n  - name: synthetic_reconciliation\n",
-			"data_quality_patterns.yaml": "data_quality_patterns:\n  - name: synthetic_null_check\n",
-			"project_profile.yaml":       "project_profile:\n  sessions_analyzed: 1\n",
+			"etl_patterns.yaml":          "schema_version: 1\nkind: etl_patterns\ngenerated_by: bqa dev\npatterns:\n  - id: \"etl-00000000\"\n    name: \"synthetic_reconciliation\"\n    domain: \"etl\"\n    evidence: \"synthetic row count reconciliation\"\n    source: \"normalized/etl/s1.md\"\n    reusable_check: \"compare source vs target row counts for the window\"\n    confidence: low\n",
+			"data_quality_patterns.yaml": "schema_version: 1\nkind: data_quality_patterns\ngenerated_by: bqa dev\npatterns:\n  - id: \"data_quality-00000000\"\n    name: \"synthetic_null_check\"\n    domain: \"data_quality\"\n    evidence: \"synthetic null check\"\n    source: \"normalized/dq/s1.md\"\n    reusable_check: \"assert null / duplicate / schema-drift rules pass\"\n    confidence: low\n",
+			"project_profile.yaml":       "schema_version: 1\nkind: project_profile\ngenerated_by: bqa dev\nprofile:\n  sessions_analyzed: 1\n  domains_detected: [etl]\n  signals:\n    etl: 1\n    graphql: 0\n    api: 0\n    data_quality: 0\n    droid: 0\n    runtime: 0\n  suggested_next_reviews:\n    - \"Review etl coverage (1 signals).\"\n  maturity: initial\n",
 		},
 	}
 	writer := fakePackWriter{files: map[string]string{}}

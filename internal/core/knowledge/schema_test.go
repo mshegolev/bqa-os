@@ -1,0 +1,149 @@
+package knowledge
+
+import (
+	"strings"
+	"testing"
+)
+
+func TestFindingIDIsStableAndDomainPrefixed(t *testing.T) {
+	f := Finding{Name: "etl_validation", Domain: "etl", SourcePath: "normalized/etl/s1.md"}
+	id1 := findingID(f)
+	id2 := findingID(f)
+	if id1 != id2 {
+		t.Fatalf("findingID not deterministic: %q vs %q", id1, id2)
+	}
+	if !strings.HasPrefix(id1, "etl-") || len(id1) != len("etl-")+8 {
+		t.Fatalf("unexpected id shape: %q", id1)
+	}
+	// Different source => different id.
+	if findingID(Finding{Name: "etl_validation", Domain: "etl", SourcePath: "other.md"}) == id1 {
+		t.Fatalf("id should change with source")
+	}
+}
+
+func TestFindingConfidenceBandsBySignalCount(t *testing.T) {
+	high := Finding{Domain: "etl", Evidence: "reconciliation row count between source table and target table"}
+	if got := findingConfidence(high); got != "high" {
+		t.Fatalf("expected high, got %q", got)
+	}
+	med := Finding{Domain: "api", Evidence: "the endpoint returned a 500 status code"}
+	if got := findingConfidence(med); got != "medium" {
+		t.Fatalf("expected medium, got %q", got)
+	}
+	low := Finding{Domain: "graphql", Evidence: "a graphql thing happened"}
+	if got := findingConfidence(low); got != "low" {
+		t.Fatalf("expected low, got %q", got)
+	}
+}
+
+func TestReusableCheckIsDomainSpecific(t *testing.T) {
+	if got := reusableCheck(Finding{Domain: "etl", Evidence: "row count reconciliation"}); !strings.Contains(got, "row counts") {
+		t.Fatalf("etl reusable_check unexpected: %q", got)
+	}
+	if got := reusableCheck(Finding{Domain: "etl", Evidence: "null check and duplicate keys"}); !strings.Contains(got, "nulls") {
+		t.Fatalf("etl null/dup reusable_check unexpected: %q", got)
+	}
+	prompt := Finding{Domain: "prompts", Evidence: "Task: verify X"}
+	if got := reusableCheck(prompt); got != "Task: verify X" {
+		t.Fatalf("prompts reusable_check should echo the prompt, got %q", got)
+	}
+}
+
+func TestDetectedSignalsSortedByCountThenName(t *testing.T) {
+	p := ProjectProfile{ETLSignals: 8, GraphQLSignals: 3, APISignals: 3}
+	sigs := detectedSignals(p)
+	if len(sigs) != 3 {
+		t.Fatalf("expected 3 detected domains, got %d", len(sigs))
+	}
+	if sigs[0].name != "etl" || sigs[1].name != "api" || sigs[2].name != "graphql" {
+		t.Fatalf("unexpected order: %+v", sigs)
+	}
+}
+
+func TestRenderFindingsV1Envelope(t *testing.T) {
+	out := renderFindings("etl_patterns", []Finding{
+		{Name: "etl_validation", Domain: "etl", Evidence: "row count reconciliation source table target table", SourcePath: "normalized/etl/s1.md"},
+	})
+	for _, want := range []string{
+		"schema_version: 1\n",
+		"kind: etl_patterns\n",
+		"generated_by: bqa ",
+		"patterns:\n",
+		"    domain:",
+		"    reusable_check:",
+		"    confidence: high\n",
+		"  - id:",
+	} {
+		if !strings.Contains(out, want) {
+			t.Fatalf("render missing %q, got:\n%s", want, out)
+		}
+	}
+}
+
+func TestRenderFindingsEmptyUsesFlowList(t *testing.T) {
+	out := renderFindings("graphql_patterns", nil)
+	if !strings.Contains(out, "kind: graphql_patterns\n") || !strings.Contains(out, "patterns: []\n") {
+		t.Fatalf("unexpected empty render:\n%s", out)
+	}
+}
+
+func TestRenderProfileV1(t *testing.T) {
+	out := renderProfile(ProjectProfile{Sessions: 12, ETLSignals: 8, GraphQLSignals: 3, APISignals: 2})
+	for _, want := range []string{
+		"schema_version: 1\n",
+		"kind: project_profile\n",
+		"profile:\n",
+		"  sessions_analyzed: 12\n",
+		"  domains_detected: [etl, graphql, api]\n",
+		"  signals:\n",
+		"    etl: 8\n",
+		"  suggested_next_reviews:\n",
+		"Review etl coverage (8 signals).",
+		"  maturity: initial\n",
+	} {
+		if !strings.Contains(out, want) {
+			t.Fatalf("profile render missing %q, got:\n%s", want, out)
+		}
+	}
+}
+
+func TestRenderProfileNoDomainsUsesEmptyList(t *testing.T) {
+	out := renderProfile(ProjectProfile{Sessions: 1})
+	if !strings.Contains(out, "domains_detected: []\n") || !strings.Contains(out, "suggested_next_reviews:\n    []\n") {
+		t.Fatalf("unexpected empty-profile render:\n%s", out)
+	}
+}
+
+func TestRenderIsDeterministic(t *testing.T) {
+	items := []Finding{
+		{Name: "etl_validation", Domain: "etl", Evidence: "row count reconciliation", SourcePath: "normalized/etl/s1.md"},
+		{Name: "api_contract_testing", Domain: "api", Evidence: "status code 500", SourcePath: "normalized/api/s2.md"},
+	}
+	if renderFindings("etl_patterns", items) != renderFindings("etl_patterns", items) {
+		t.Fatal("renderFindings is not deterministic")
+	}
+	p := ProjectProfile{Sessions: 5, ETLSignals: 2, APISignals: 1}
+	if renderProfile(p) != renderProfile(p) {
+		t.Fatal("renderProfile is not deterministic")
+	}
+}
+
+func TestPatternArtifactHasAllRequiredFields(t *testing.T) {
+	out := renderFindings("api_patterns", []Finding{
+		{Name: "api_contract_testing", Domain: "api", Evidence: "endpoint status code contract", SourcePath: "normalized/api/s1.md"},
+	})
+	for _, field := range []string{"schema_version:", "kind:", "generated_by:", "- id:", "name:", "domain:", "evidence:", "source:", "reusable_check:", "confidence:"} {
+		if !strings.Contains(out, field) {
+			t.Fatalf("pattern artifact missing required field %q", field)
+		}
+	}
+}
+
+func TestProfileArtifactHasAllRequiredFields(t *testing.T) {
+	out := renderProfile(ProjectProfile{Sessions: 4, ETLSignals: 2})
+	for _, field := range []string{"schema_version:", "kind: project_profile", "sessions_analyzed:", "domains_detected:", "signals:", "suggested_next_reviews:"} {
+		if !strings.Contains(out, field) {
+			t.Fatalf("profile artifact missing required field %q", field)
+		}
+	}
+}
