@@ -213,3 +213,32 @@ func TestLearnIsIdempotent(t *testing.T) {
 		t.Fatalf("second learn should add nothing, got %+v", res)
 	}
 }
+
+func TestReviewListsOnlyPending(t *testing.T) {
+	uc, _ := learnFixture()
+	if _, err := uc.Learn(context.Background()); err != nil {
+		t.Fatalf("Learn: %v", err)
+	}
+	res, err := uc.Review(context.Background())
+	if err != nil {
+		t.Fatalf("Review: %v", err)
+	}
+	if len(res.Pending) == 0 {
+		t.Fatalf("expected pending candidates")
+	}
+	for _, it := range res.Pending {
+		if it.Status != StatusPending {
+			t.Fatalf("review returned non-pending item: %#v", it)
+		}
+	}
+	// Verify Lessons appear before SkillCandidates (documented ordering).
+	seenSkill := false
+	for _, it := range res.Pending {
+		if strings.HasPrefix(it.ID, "skill-") {
+			seenSkill = true
+		}
+		if strings.HasPrefix(it.ID, "lesson-") && seenSkill {
+			t.Fatalf("lesson appeared after a skill candidate: ordering violated")
+		}
+	}
+}
