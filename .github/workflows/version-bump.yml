@@ -1,0 +1,40 @@
+name: version-bump
+
+# Acts as the "bump on every merge to master" hook: a local git hook cannot see
+# GitHub squash-merges, so this CI workflow fires on each push to main and bumps
+# the patch version in the VERSION file, committing it back. It uses no untrusted
+# event inputs (only the repo-controlled VERSION file), so there is no injection risk.
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - VERSION # the bump commit only touches VERSION, so it won't re-trigger
+
+# Never run two bumps at once (serialize pushes to main).
+concurrency: version-bump
+
+permissions:
+  contents: write
+
+jobs:
+  bump:
+    name: Bump patch version
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Bump VERSION and commit
+        run: |
+          set -euo pipefail
+          cur="$(cat VERSION 2>/dev/null || echo '0.1.0')"
+          IFS=. read -r major minor patch <<< "$cur"
+          patch=$((patch + 1))
+          next="${major}.${minor}.${patch}"
+          echo "$next" > VERSION
+          echo "Bumping ${cur} -> ${next}"
+          git config user.name "bqa-version-bot"
+          git config user.email "bqa-version-bot@users.noreply.github.com"
+          git add VERSION
+          git commit -m "chore: bump version to ${next} [skip ci]"
+          git push origin HEAD:main
