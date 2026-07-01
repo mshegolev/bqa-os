@@ -23,6 +23,7 @@ func Execute() {
 	rootCmd.AddCommand(demoCmd())
 	rootCmd.AddCommand(runCmd())
 	rootCmd.AddCommand(brainCmd())
+	rootCmd.AddCommand(memoryCmd())
 	rootCmd.AddCommand(sanitizeCmd())
 	rootCmd.AddCommand(versionCmd())
 	rootCmd.AddCommand(selfUpdateCmd())
