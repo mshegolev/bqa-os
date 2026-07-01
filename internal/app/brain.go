@@ -20,14 +20,17 @@ func brainCmd() *cobra.Command {
 		Short: "Manage BQA Brain repository",
 	}
 
-	cmd.AddCommand(&cobra.Command{
+	var connectBranch string
+	connectCmd := &cobra.Command{
 		Use:   "connect <repo-url>",
 		Short: "Connect to a BQA Brain git repository",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return brain.Connect(args[0])
+			return brain.Connect(args[0], connectBranch)
 		},
-	})
+	}
+	connectCmd.Flags().StringVar(&connectBranch, "branch", "", "brain branch to use; pass auto to derive fb-aiqa-<user> from local git identity")
+	cmd.AddCommand(connectCmd)
 
 	cmd.AddCommand(&cobra.Command{
 		Use:   "pull",
