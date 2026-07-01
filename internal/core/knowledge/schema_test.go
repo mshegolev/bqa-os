@@ -86,3 +86,30 @@ func TestRenderFindingsEmptyUsesFlowList(t *testing.T) {
 		t.Fatalf("unexpected empty render:\n%s", out)
 	}
 }
+
+func TestRenderProfileV1(t *testing.T) {
+	out := renderProfile(ProjectProfile{Sessions: 12, ETLSignals: 8, GraphQLSignals: 3, APISignals: 2})
+	for _, want := range []string{
+		"schema_version: 1\n",
+		"kind: project_profile\n",
+		"profile:\n",
+		"  sessions_analyzed: 12\n",
+		"  domains_detected: [etl, graphql, api]\n",
+		"  signals:\n",
+		"    etl: 8\n",
+		"  suggested_next_reviews:\n",
+		"Review etl coverage (8 signals).",
+		"  maturity: initial\n",
+	} {
+		if !strings.Contains(out, want) {
+			t.Fatalf("profile render missing %q, got:\n%s", want, out)
+		}
+	}
+}
+
+func TestRenderProfileNoDomainsUsesEmptyList(t *testing.T) {
+	out := renderProfile(ProjectProfile{Sessions: 1})
+	if !strings.Contains(out, "domains_detected: []\n") || !strings.Contains(out, "suggested_next_reviews:\n    []\n") {
+		t.Fatalf("unexpected empty-profile render:\n%s", out)
+	}
+}

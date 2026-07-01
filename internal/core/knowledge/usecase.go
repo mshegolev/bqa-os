@@ -416,7 +416,40 @@ func artifactHeader(kind string) string {
 }
 
 func renderProfile(p ProjectProfile) string {
-	return fmt.Sprintf("project_profile:\n  sessions_analyzed: %d\n  signals:\n    etl: %d\n    graphql: %d\n    api: %d\n    data_quality: %d\n    droid: %d\n    runtime: %d\n  maturity: initial\n", p.Sessions, p.ETLSignals, p.GraphQLSignals, p.APISignals, p.DQSignals, p.DroidSignals, p.RuntimeSignals)
+	var b strings.Builder
+	b.WriteString(artifactHeader("project_profile"))
+	b.WriteString("profile:\n")
+	b.WriteString(fmt.Sprintf("  sessions_analyzed: %d\n", p.Sessions))
+
+	sigs := detectedSignals(p)
+	names := make([]string, 0, len(sigs))
+	for _, s := range sigs {
+		names = append(names, s.name)
+	}
+	if len(names) == 0 {
+		b.WriteString("  domains_detected: []\n")
+	} else {
+		b.WriteString("  domains_detected: [" + strings.Join(names, ", ") + "]\n")
+	}
+
+	b.WriteString("  signals:\n")
+	b.WriteString(fmt.Sprintf("    etl: %d\n", p.ETLSignals))
+	b.WriteString(fmt.Sprintf("    graphql: %d\n", p.GraphQLSignals))
+	b.WriteString(fmt.Sprintf("    api: %d\n", p.APISignals))
+	b.WriteString(fmt.Sprintf("    data_quality: %d\n", p.DQSignals))
+	b.WriteString(fmt.Sprintf("    droid: %d\n", p.DroidSignals))
+	b.WriteString(fmt.Sprintf("    runtime: %d\n", p.RuntimeSignals))
+
+	b.WriteString("  suggested_next_reviews:\n")
+	if len(sigs) == 0 {
+		b.WriteString("    []\n")
+	} else {
+		for _, s := range sigs {
+			b.WriteString("    - " + textutil.QuoteYAML(fmt.Sprintf("Review %s coverage (%d signals).", s.name, s.count)) + "\n")
+		}
+	}
+	b.WriteString("  maturity: initial\n")
+	return b.String()
 }
 
 func uniqueFindings(items []Finding) []Finding {
