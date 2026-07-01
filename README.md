@@ -14,7 +14,10 @@ The steps below use the `bqa` CLI (for `sanitize`, `codex`, etc.). Install it fi
 
 ```bash
 brew install go   # macOS; needs a Go toolchain
-curl -fsSL https://raw.githubusercontent.com/mshegolev/bqa-os/main/install.sh | bash
+mkdir -p ~/develop && cd ~/develop
+git clone git@git.ringcentral.com:BIAnalyticsPlatform/aiqa/bqa-os.git
+cd bqa-os
+bash install.sh
 export PATH="$HOME/.local/bin:$PATH"
 bqa --help        # verify
 ```
@@ -252,8 +255,8 @@ BQA-OS should then help the selected AI coding runtime act as a BQA Master Agent
 ## Repository split
 
 ```text
-mshegolev/bqa-os      public engine / binary
-mshegolev/bqa-brain   private knowledge / agents / memory / workflows
+BIAnalyticsPlatform/aiqa/bqa-os      internal engine / binary
+BIAnalyticsPlatform/aiqa/bqa-brain   private knowledge / agents / memory / workflows
 ```
 
 The public repository contains the runtime engine. Private project value should live in BQA Brain or local `.bqa` workspaces.
@@ -264,7 +267,9 @@ Early installer requires Go:
 
 ```bash
 brew install go
-curl -fsSL https://raw.githubusercontent.com/mshegolev/bqa-os/main/install.sh | bash
+git clone git@git.ringcentral.com:BIAnalyticsPlatform/aiqa/bqa-os.git ~/develop/bqa-os
+cd ~/develop/bqa-os
+bash install.sh
 export PATH="$HOME/.local/bin:$PATH"
 ```
 
