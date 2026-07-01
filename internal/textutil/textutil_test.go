@@ -14,6 +14,28 @@ func TestHasAny(t *testing.T) {
 	}
 }
 
+func TestQuoteUnquoteYAMLRoundTrip(t *testing.T) {
+	cases := []string{
+		"plain",
+		`has "quotes"`,
+		"has\nnewline\tand tab",
+		`back\slash`,
+		"",
+	}
+	for _, in := range cases {
+		got := UnquoteYAML(QuoteYAML(in))
+		if got != in {
+			t.Fatalf("round-trip mismatch for %q: got %q", in, got)
+		}
+	}
+}
+
+func TestUnquoteYAMLBareScalar(t *testing.T) {
+	if got := UnquoteYAML("  bareword  "); got != "bareword" {
+		t.Fatalf("expected trimmed bareword, got %q", got)
+	}
+}
+
 func TestQuoteYAML(t *testing.T) {
 	cases := map[string]string{
 		`plain`:        `"plain"`,
