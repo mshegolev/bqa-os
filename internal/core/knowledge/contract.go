@@ -2,6 +2,11 @@ package knowledge
 
 import "strings"
 
+// SchemaVersion is the current knowledge artifact schema version. Every artifact
+// written by bqa build carries it as `schema_version`. Additive field changes
+// keep this version; removing/renaming a field or changing its meaning bumps it.
+const SchemaVersion = 1
+
 // ArtifactSpec describes a single knowledge artifact produced by `bqa build`.
 // RootKey is the top-level YAML key expected inside the file (filename minus
 // the ".yaml" extension).
