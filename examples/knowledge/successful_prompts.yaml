@@ -1,52 +1,61 @@
-# Synthetic example of the artifact produced by `bqa build` at
+# Synthetic example of the v1 artifact produced by `bqa build` at
 # .bqa/knowledge/successful_prompts.yaml
 #
-# Shape matches internal/core/knowledge/usecase.go (renderFindings):
-#   top-level `successful_prompts:` key, list items with
-#   name / domain / evidence / source.
-# The reusable_prompt and reusable_check keys are additive, human-curated
-# extensions; consumers that only know the base contract can ignore them.
+# Shape matches the v1 schema in internal/core/knowledge (renderFindings) and
+# docs/knowledge-artifacts.md: a common envelope (schema_version / kind /
+# generated_by) followed by a `patterns:` list. Each pattern has:
+#   id / name / domain / evidence / source / reusable_check / confidence
+# For prompts, reusable_check echoes the reusable prompt text itself.
 #
 # All records below are SYNTHETIC and SAFE — no client data, no secrets.
-successful_prompts:
-  - name: "graphql_typed_error_not_500"
+schema_version: 1
+kind: successful_prompts
+generated_by: bqa web
+patterns:
+  - id: "prompts-a1b2c3d4"
+    name: "successful_prompt_candidate"
     domain: "prompts"
-    evidence: "task: send malformed args to order(id:) and assert a typed GraphQL error instead of a 500"
-    source: "examples/normalized/graphql/session-01.txt"
-    reusable_prompt: "For each GraphQL mutation/query under [focus], send missing-required-arg, wrong-type, and null-vs-absent variants; assert a typed error with the correct path and no 5xx."
-    reusable_check: "negative input -> response.errors[0].path == [field] AND http_status == 200"
+    evidence: "task: send malformed args to order(id:) and assert a typed GraphQL error instead of a 500; verify the error path and status"
+    source: "normalized/graphql/session-01.txt"
+    reusable_check: "For each GraphQL mutation/query under [focus], send missing-required-arg, wrong-type, and null-vs-absent variants; assert a typed error with the correct path and no 5xx."
+    confidence: high
 
-  - name: "api_regression_contract_stability"
+  - id: "prompts-b2c3d4e5"
+    name: "successful_prompt_candidate"
     domain: "prompts"
-    evidence: "task: re-run the search API regression suite and assert response schema and sort order are unchanged across the release"
-    source: "examples/normalized/api/session-02.txt"
-    reusable_prompt: "Given the [endpoint] contract, build a regression check that asserts response shape, status codes, and sort order are unchanged between [baseline] and [candidate] builds, ignoring volatile values."
-    reusable_check: "diff(schema(baseline_response), schema(candidate_response)) == empty AND results sorted by relevance"
+    evidence: "task: re-run the search API regression suite and verify response schema, status codes, and sort order are unchanged across the release"
+    source: "normalized/api/session-02.txt"
+    reusable_check: "Given the [endpoint] contract, build a regression check that asserts response shape, status codes, and sort order are unchanged between [baseline] and [candidate] builds, ignoring volatile values."
+    confidence: high
 
-  - name: "etl_partition_reconciliation_check"
+  - id: "prompts-c3d4e5f6"
+    name: "successful_prompt_candidate"
     domain: "prompts"
-    evidence: "task: validate etl reconciliation for the daily partition so destination row count equals source extract count"
-    source: "examples/normalized/etl/session-03.txt"
-    reusable_prompt: "For pipeline [name], reconcile [src] -> [dst] for partition [date]: assert destination count equals source extract count and no business keys are duplicated."
-    reusable_check: "count(dst where partition_date=[date]) - count(src where partition_date=[date]) == 0"
+    evidence: "task: validate etl reconciliation for the daily partition so destination row count equals source extract count; verify no duplicate business keys"
+    source: "normalized/etl/session-03.txt"
+    reusable_check: "For pipeline [name], reconcile [src] -> [dst] for partition [date]: assert destination count equals source extract count and no business keys are duplicated."
+    confidence: high
 
-  - name: "data_quality_dup_key_and_freshness"
+  - id: "prompts-d4e5f6a7"
+    name: "successful_prompt_candidate"
     domain: "prompts"
-    evidence: "task: assert no duplicate business keys in the partition and that max(load_ts) is within the freshness SLA"
-    source: "examples/normalized/data_quality/session-04.txt"
-    reusable_prompt: "For [dst], emit zero-rows-on-success assertions for: duplicate business keys within [partition], nulls in required columns, and max(load_ts) within [sla] hours."
-    reusable_check: "SELECT business_key, COUNT(*) c FROM [dst] WHERE partition_date='[date]' GROUP BY business_key HAVING c > 1  -- expect zero rows"
+    evidence: "task: assert no duplicate business keys in the partition and verify that max(load_ts) is within the freshness SLA; implement the acceptance check"
+    source: "normalized/data_quality/session-04.txt"
+    reusable_check: "For [dst], emit zero-rows-on-success assertions for: duplicate business keys within [partition], nulls in required columns, and max(load_ts) within [sla] hours."
+    confidence: high
 
-  - name: "bug_report_standardization_to_guard"
+  - id: "prompts-e5f6a7b8"
+    name: "successful_prompt_candidate"
     domain: "prompts"
-    evidence: "task: convert a duplicate-rows bug report into a standardized summary plus a single regression guard that would have caught it"
-    source: "examples/normalized/bugs/session-05.txt"
-    reusable_prompt: "Turn this bug report into: standardized summary (title/severity/component), minimal repro with [placeholder] inputs, and one regression guard (test or validation rule) that detects the same defect class."
-    reusable_check: "regression guard exists AND fails on the pre-fix build AND passes on the post-fix build"
+    evidence: "task: convert a duplicate-rows bug report into a standardized summary plus a single regression guard that would have caught it; verify it fails pre-fix"
+    source: "normalized/bugs/session-05.txt"
+    reusable_check: "Turn this bug report into: standardized summary (title/severity/component), minimal repro with [placeholder] inputs, and one regression guard (test or validation rule) that detects the same defect class."
+    confidence: high
 
-  - name: "knowledge_extraction_to_findings"
+  - id: "prompts-f6a7b8c9"
+    name: "successful_prompt_candidate"
     domain: "prompts"
-    evidence: "task: distill a testing session transcript into name/domain/evidence/source findings, dropping polite filler"
-    source: "examples/normalized/prompts/session-06.txt"
-    reusable_prompt: "Extract reusable findings from [transcript]; for each emit name/domain/evidence/source plus reusable_check; only emit on concrete evidence; drop generic or polite text; replace any sensitive value with [placeholder]."
-    reusable_check: "every emitted finding cites concrete evidence AND contains no client data, secrets, or hostnames"
+    evidence: "task: distill a testing session transcript into id/name/domain/evidence/source findings with acceptance context, dropping polite filler"
+    source: "normalized/prompts/session-06.txt"
+    reusable_check: "Extract reusable findings from [transcript]; for each emit name/domain/evidence/source plus reusable_check; only emit on concrete evidence; drop generic or polite text; replace any sensitive value with [placeholder]."
+    confidence: high
