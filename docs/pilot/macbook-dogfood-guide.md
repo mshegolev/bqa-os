@@ -20,38 +20,35 @@ Related reading:
 ## 1. Prerequisites
 
 - **macOS** with a terminal.
-- **Go** (used to build the `bqa` CLI):
-
-  ```bash
-  brew install go
-  go version
-  ```
+- **Go** (used to build the `bqa` CLI). The installer can check the minimum
+  version before doing any build work.
 
 - **git** and a local checkout of this repository:
 
   ```bash
-  git clone https://github.com/mshegolev/bqa-os.git
+  git clone git@git.ringcentral.com:BIAnalyticsPlatform/aiqa/bqa-os.git
   cd bqa-os
+  bash install.sh --check-go
   ```
 
 ---
 
 ## 2. Build (or install) the `bqa` CLI
 
-From a clean checkout, build a local binary:
+From a clean checkout, install the binary:
 
 ```bash
-go build -o ./bqa ./cmd/bqa
-./bqa --help
+bash install.sh
+export PATH="$HOME/.local/bin:$PATH"
+bqa --help
 ```
 
 Expected: the CLI help listing the available commands (`init`, `discover`,
 `ingest`, `build`, `codex`, `doctor`, `brain`, …).
 
-> Alternatively, install onto your `PATH` with the project installer
-> (`curl -fsSL https://raw.githubusercontent.com/mshegolev/bqa-os/main/install.sh | bash`)
-> and then call `bqa` directly. The rest of this guide writes `bqa`; if you
-> built a local binary, use `./bqa`.
+> If `bash install.sh --check-go` fails, install or upgrade Go with Homebrew:
+> `brew install go` for a missing toolchain, or `brew upgrade go` for an old
+> version.
 
 Confirm the binary works:
 
@@ -362,7 +359,7 @@ unrelated files in the target are left untouched.
 
 | Symptom | Likely cause | Fix |
 | --- | --- | --- |
-| `bqa: command not found` | CLI not built / not on `PATH` | Run `go build -o ./bqa ./cmd/bqa` and call `./bqa`, or install via `install.sh`. |
+| `bqa: command not found` | CLI not built / not on `PATH` | Run `bash install.sh`, then add `export PATH="$HOME/.local/bin:$PATH"` to the shell. |
 | `Imported: 0` from `bqa ingest --from` | Wrong directory, or no `*.md` / `*.log` / `*.txt` files in it | Check the path passed to `--from` and the file extensions. |
 | Empty / near-empty `*.yaml` after `bqa build` | No signal for that domain in your notes (e.g. GraphQL files for an ETL corpus) | Expected. Add notes that mention the missing domain, or ignore that artifact. |
 | `bqa build --check` fails | Knowledge dir missing or artifacts malformed | Re-run `bqa build` to regenerate `.bqa/knowledge/`. |

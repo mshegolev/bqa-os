@@ -60,7 +60,8 @@ Format: plain `*.md`, `*.log`, or `*.txt` files in a single folder.
 
 Follow [dogfood guide §2–§3](macbook-dogfood-guide.md#2-build-or-install-the-bqa-cli):
 
-- [ ] Build or install the CLI: `go build -o ./bqa ./cmd/bqa` (or run `install.sh`).
+- [ ] Check Go quickly: `bash install.sh --check-go`.
+- [ ] Install the CLI: `bash install.sh`.
 - [ ] Verify: `bqa --help` and `bqa version` work.
 - [ ] Create the pilot workspace directory and `cd` into it.
 - [ ] Initialize: `bqa init` → expect `BQA workspace initialized in .bqa/`.
