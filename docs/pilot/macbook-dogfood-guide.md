@@ -26,7 +26,7 @@ Related reading:
 - **git** and a local checkout of this repository:
 
   ```bash
-  git clone git@git.ringcentral.com:BIAnalyticsPlatform/aiqa/bqa-os.git
+  git clone git@github.com:mshegolev/bqa-os.git
   cd bqa-os
   bash install.sh --check-go
   ```

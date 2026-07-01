@@ -56,7 +56,7 @@ deployed on every push to `main`.
 - **CI runner**: Pages sat pending until a project runner was registered; one
   analyzer also needed "Run untagged jobs" enabled.
 - **CDN cache**: edge nodes briefly served a stale `make-archive.sh` after deploy.
-- **Pages HTTPS**: the instance serves a `*.ringcentral.com` cert that doesn't
+- **Pages HTTPS**: the instance serves a wildcard cert for another domain that does not
   cover the Pages subdomain, so the demo is reached over **http** (infra-level).
 
 ## Lessons learned

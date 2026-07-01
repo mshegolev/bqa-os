@@ -1,6 +1,6 @@
 # BQA-OS
 
-> **Citadel: The Release War isn't just a game.** It auto-forges reusable AI agents from your real work sessions, plugs them into Codex / Claude / OpenCode, and lets you watch your warband battle the bugs, CVEs and the Deadline Warlord — in playful form. **[▶ Play now](http://m-v-shchegolev-agent-citadel-d3d663.pages.git.ringcentral.com/)**
+> **Citadel: The Release War isn't just a game.** It auto-forges reusable AI agents from your real work sessions, plugs them into Codex / Claude / OpenCode, and lets you watch your warband battle the bugs, CVEs and the Deadline Warlord — in playful form. **[▶ Play now](https://mshegolev.github.io/bqa-os/)**
 
 **BQA-OS (Better QA Operating System)** is an AI-native operating system for quality engineering.
 
@@ -14,7 +14,7 @@ The steps below use the `bqa` CLI (for `sanitize`, `codex`, etc.). Install it fi
 
 ```bash
 mkdir -p ~/develop && cd ~/develop
-git clone git@git.ringcentral.com:BIAnalyticsPlatform/aiqa/bqa-os.git
+git clone git@github.com:mshegolev/bqa-os.git
 cd bqa-os
 bash install.sh --check-go  # fast check; install/upgrade Go only if this fails
 bash install.sh
@@ -33,7 +33,7 @@ the battle is just a fun way to see your roster in action.
 
 ```bash
 # 1 · Make the archive from your local AI-coding sessions
-curl -fsSL http://m-v-shchegolev-agent-citadel-d3d663.pages.git.ringcentral.com/tools/make-archive.sh | bash
+curl -fsSL https://mshegolev.github.io/bqa-os/tools/make-archive.sh | bash
 #    → archive.json + archive.zip
 
 # 2 · Sanitize it (redact secrets before sharing/using), then re-pack
@@ -58,11 +58,11 @@ Turn your local AI-coding sessions into an uploadable archive, then drop it on t
 decoder page to forge your own agents:
 
 ```bash
-curl -fsSL http://m-v-shchegolev-agent-citadel-d3d663.pages.git.ringcentral.com/tools/make-archive.sh | bash
+curl -fsSL https://mshegolev.github.io/bqa-os/tools/make-archive.sh | bash
 # → archive.zip  (built from ~/.claude, ~/.codex, ~/.opencode sessions; stays local)
 ```
 
-Then open the [decoder page](http://m-v-shchegolev-agent-citadel-d3d663.pages.git.ringcentral.com/), drop `archive.zip`, and hit Battle. Sanitize before sharing publicly.
+Then open the [decoder page](https://mshegolev.github.io/bqa-os/), drop `archive.zip`, and hit Battle. Sanitize before sharing publicly.
 
 ## Use the decoded archive (e.g. in Codex)
 
@@ -137,8 +137,8 @@ without overwriting user-owned root instruction files such as `CLAUDE.md` or
 
 ## Live demo (GitLab Pages)
 
-- Site: http://m-v-shchegolev-agent-citadel-d3d663.pages.git.ringcentral.com
-- 🎮 Game — **Citadel: The Release War**: http://m-v-shchegolev-agent-citadel-d3d663.pages.git.ringcentral.com/game.html
+- Site: https://mshegolev.github.io/bqa-os
+- 🎮 Game — **Citadel: The Release War**: https://mshegolev.github.io/bqa-os/game.html
 
 Published from `docs/` by the `pages` job in `.gitlab-ci.yml` on every push to `main`.
 
@@ -266,7 +266,7 @@ The public repository contains the runtime engine. Private project value should 
 Early installer requires Go:
 
 ```bash
-git clone git@git.ringcentral.com:BIAnalyticsPlatform/aiqa/bqa-os.git ~/develop/bqa-os
+git clone git@github.com:mshegolev/bqa-os.git ~/develop/bqa-os
 cd ~/develop/bqa-os
 bash install.sh --check-go
 bash install.sh
