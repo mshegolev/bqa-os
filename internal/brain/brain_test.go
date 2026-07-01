@@ -9,7 +9,7 @@ import (
 
 func TestPolicyBranchNameUsesGitLabCompliantPrefix(t *testing.T) {
 	tests := map[string]string{
-		"m.v.shchegolev@ringcentral.com": "fb-aiqa-m-v-shchegolev",
+		"m.v.shchegolev@example.com": "fb-aiqa-m-v-shchegolev",
 		"Mikhail V. Shchegolev":          "fb-aiqa-mikhail-v-shchegolev",
 		"fb-aiqa-existing":               "fb-aiqa-existing",
 		"master":                         "master",
@@ -41,7 +41,7 @@ func TestConnectWritesResolvedBrainBranch(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("BQA_HOME", home)
 
-	if err := Connect("git@git.ringcentral.com:BIAnalyticsPlatform/aiqa/bqa-brain.git", "Mikhail V. Shchegolev"); err != nil {
+	if err := Connect("git@github.com:mshegolev/bqa-brain.git", "Mikhail V. Shchegolev"); err != nil {
 		t.Fatal(err)
 	}
 
@@ -52,7 +52,7 @@ func TestConnectWritesResolvedBrainBranch(t *testing.T) {
 
 	content := string(data)
 	for _, expected := range []string{
-		`brain_repository: "git@git.ringcentral.com:BIAnalyticsPlatform/aiqa/bqa-brain.git"`,
+		`brain_repository: "git@github.com:mshegolev/bqa-brain.git"`,
 		`brain_cache: "` + filepath.Join(home, "brain") + `"`,
 		`brain_branch: "fb-aiqa-mikhail-v-shchegolev"`,
 	} {
