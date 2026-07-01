@@ -116,3 +116,5 @@ The `github` target materializes the allow-listed payload into the connected
 brain cache and commits/pushes it via the existing brain sync (which sanitizes
 before committing). It requires a connected brain; otherwise the export reports
 that the brain is not connected.
+
+_Versioning: the patch version auto-bumps in `VERSION` on every merge to `main`._
